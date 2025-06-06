@@ -41,18 +41,23 @@ interface MenuItemFormData {
   sortOrder: number;
 }
 
-const MenuItemManager = () => {
+interface MenuItemManagerProps {
+  selectedCategoryId: string | null;
+}
+
+const MenuItemManager: React.FC<MenuItemManagerProps> = ({ selectedCategoryId }) => {
   const { 
     menuItems, 
     menuCategories, 
     createMenuItem, 
     updateMenuItem, 
-    deleteMenuItem 
+    deleteMenuItem,
+    getCategoriesByParent,
+    getMenuItemsByCategory
   } = useRestaurant();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState<MenuItemFormData>({
     name: '',
@@ -82,12 +87,40 @@ const MenuItemManager = () => {
     sortOrder: 1
   });
 
-  const filteredItems = menuItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.categoryId === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Get items to display based on selected category
+  const getItemsToDisplay = () => {
+    let itemsToShow = menuItems;
+
+    if (selectedCategoryId) {
+      const subcategories = getCategoriesByParent(selectedCategoryId);
+      const categoryIds = [selectedCategoryId, ...subcategories.map(sub => sub.id)];
+      itemsToShow = menuItems.filter(item => categoryIds.includes(item.categoryId));
+    }
+
+    if (searchTerm) {
+      itemsToShow = itemsToShow.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return itemsToShow;
+  };
+
+  // Group items by category for display
+  const getGroupedItems = () => {
+    const itemsToShow = getItemsToDisplay();
+    const grouped: { [categoryId: string]: MenuItem[] } = {};
+
+    itemsToShow.forEach(item => {
+      if (!grouped[item.categoryId]) {
+        grouped[item.categoryId] = [];
+      }
+      grouped[item.categoryId].push(item);
+    });
+
+    return grouped;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +140,7 @@ const MenuItemManager = () => {
       name: '',
       description: '',
       basePrice: 0,
-      categoryId: '',
+      categoryId: selectedCategoryId || '',
       isAvailable: true,
       isVegetarian: false,
       isVegan: false,
@@ -202,6 +235,8 @@ const MenuItemManager = () => {
       addons: prev.addons.filter((_, i) => i !== index)
     }));
   };
+
+  const groupedItems = getGroupedItems();
 
   return (
     <div className="space-y-6">
@@ -512,122 +547,126 @@ const MenuItemManager = () => {
         </Dialog>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <Input
-            placeholder="Search menu items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {menuCategories.filter(cat => cat.isActive).map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex-1">
+        <Input
+          placeholder="Search menu items..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item) => (
-          <Card key={item.id} className={`hover:shadow-md transition-all ${!item.isAvailable ? 'opacity-75' : ''}`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {item.name}
-                    {item.isSignature && <Badge className="bg-yellow-500">Signature</Badge>}
-                    {item.isNew && <Badge className="bg-green-500">New</Badge>}
-                    {item.isPopular && <Badge className="bg-blue-500">Popular</Badge>}
-                  </CardTitle>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <div className="flex items-center text-yellow-500">
-                      <Star className="h-4 w-4 fill-current" />
-                      <span className="text-sm ml-1">{item.rating}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">({item.reviewCount})</span>
-                  </div>
-                  <Badge variant="outline" className="mt-1">
-                    {getCategoryName(item.categoryId)}
-                  </Badge>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-lg flex items-center">
-                    <DollarSign className="h-4 w-4" />
-                    {item.basePrice.toFixed(2)}
-                  </div>
-                  <div className="flex gap-1 mt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
-              
-              <div className="flex flex-wrap gap-1 mb-3">
-                {item.isVegetarian && (
-                  <Badge variant="outline" className="text-green-600 border-green-600">Vegetarian</Badge>
+      {/* Display items grouped by category/subcategory */}
+      <div className="space-y-8">
+        {Object.entries(groupedItems).map(([categoryId, items]) => {
+          const category = menuCategories.find(cat => cat.id === categoryId);
+          if (!category) return null;
+
+          return (
+            <div key={categoryId} className="space-y-4">
+              <div className="border-b pb-2">
+                <h3 className="text-xl font-semibold">{category.name}</h3>
+                {category.description && (
+                  <p className="text-sm text-muted-foreground">{category.description}</p>
                 )}
-                {item.isVegan && (
-                  <Badge variant="outline" className="text-green-700 border-green-700">Vegan</Badge>
-                )}
-                {item.isSpicy && (
-                  <Badge variant="outline" className="text-red-600 border-red-600">🌶️ Spicy</Badge>
-                )}
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {item.preparationTime} min
+                <Badge variant="outline" className="mt-1">
+                  {items.length} items
                 </Badge>
-                {item.calories && (
-                  <Badge variant="secondary">{item.calories} cal</Badge>
-                )}
               </div>
+              
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {items.map((item) => (
+                  <Card key={item.id} className={`hover:shadow-md transition-all ${!item.isAvailable ? 'opacity-75' : ''}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {item.name}
+                            {item.isSignature && <Badge className="bg-yellow-500">Signature</Badge>}
+                            {item.isNew && <Badge className="bg-green-500">New</Badge>}
+                            {item.isPopular && <Badge className="bg-blue-500">Popular</Badge>}
+                          </CardTitle>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className="flex items-center text-yellow-500">
+                              <Star className="h-4 w-4 fill-current" />
+                              <span className="text-sm ml-1">{item.rating}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">({item.reviewCount})</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg flex items-center">
+                            <DollarSign className="h-4 w-4" />
+                            {item.basePrice.toFixed(2)}
+                          </div>
+                          <div className="flex gap-1 mt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                      
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {item.isVegetarian && (
+                          <Badge variant="outline" className="text-green-600 border-green-600">Vegetarian</Badge>
+                        )}
+                        {item.isVegan && (
+                          <Badge variant="outline" className="text-green-700 border-green-700">Vegan</Badge>
+                        )}
+                        {item.isSpicy && (
+                          <Badge variant="outline" className="text-red-600 border-red-600">🌶️ Spicy</Badge>
+                        )}
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {item.preparationTime} min
+                        </Badge>
+                        {item.calories && (
+                          <Badge variant="secondary">{item.calories} cal</Badge>
+                        )}
+                      </div>
 
-              {item.variants && item.variants.length > 0 && (
-                <div className="text-xs mb-2">
-                  <span className="font-medium">Variants:</span> {item.variants.map(v => v.name).join(', ')}
-                </div>
-              )}
+                      {item.variants && item.variants.length > 0 && (
+                        <div className="text-xs mb-2">
+                          <span className="font-medium">Variants:</span> {item.variants.map(v => v.name).join(', ')}
+                        </div>
+                      )}
 
-              {item.addons && item.addons.length > 0 && (
-                <div className="text-xs mb-2">
-                  <span className="font-medium">Add-ons:</span> {item.addons.map(a => a.name).join(', ')}
-                </div>
-              )}
+                      {item.addons && item.addons.length > 0 && (
+                        <div className="text-xs mb-2">
+                          <span className="font-medium">Add-ons:</span> {item.addons.map(a => a.name).join(', ')}
+                        </div>
+                      )}
 
-              {item.allergens.length > 0 && (
-                <div className="text-xs">
-                  <span className="text-muted-foreground">Contains:</span>
-                  <span className="ml-1 capitalize">{item.allergens.join(', ')}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                      {item.allergens.length > 0 && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Contains:</span>
+                          <span className="ml-1 capitalize">{item.allergens.join(', ')}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {filteredItems.length === 0 && (
+      {Object.keys(groupedItems).length === 0 && (
         <Card>
           <CardContent className="text-center py-10">
             <div className="text-muted-foreground">

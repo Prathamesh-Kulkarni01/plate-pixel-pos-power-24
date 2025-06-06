@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,8 +39,8 @@ const Settings = () => {
   const [taxSettings, setTaxSettings] = useState({
     taxRate: restaurant?.settings?.taxRate || 8.5,
     serviceCharge: restaurant?.settings?.serviceCharge || 10,
-    autoAcceptOrders: restaurant?.settings?.autoAcceptOrders || false,
-    printReceipts: restaurant?.settings?.printReceipts || true
+    autoAcceptOrders: Boolean(restaurant?.settings?.autoAcceptOrders || false),
+    printReceipts: Boolean(restaurant?.settings?.printReceipts ?? true)
   });
 
   // Notification Settings

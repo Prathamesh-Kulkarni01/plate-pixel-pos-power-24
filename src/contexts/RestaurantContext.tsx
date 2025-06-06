@@ -232,95 +232,6 @@ const mockTables: Table[] = [
   { id: 't6', number: '6', capacity: 8, status: 'cleaning', section: 'Private', qrCode: 'QR_T6_BELLA_VISTA', activeGroupCount: 0 },
 ];
 
-const mockTableGroups: TableGroup[] = [
-  {
-    id: 'grp_1',
-    tableId: 't2',
-    name: 'Group A',
-    status: 'dining',
-    customerName: 'John Smith',
-    customerPhone: '+1234567890',
-    createdAt: new Date(Date.now() - 45 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 30 * 60 * 1000),
-    waiterId: 'waiter_1',
-    waiterName: 'Alice Johnson'
-  },
-  {
-    id: 'grp_2',
-    tableId: 't2',
-    name: 'Group B',
-    status: 'ordering',
-    customerName: 'Sarah Davis',
-    createdAt: new Date(Date.now() - 20 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 15 * 60 * 1000),
-    waiterId: 'waiter_2',
-    waiterName: 'Bob Wilson'
-  }
-];
-
-const mockCustomers: Customer[] = [
-  {
-    id: 'cust_1',
-    name: 'John Smith',
-    phone: '+1234567890',
-    email: 'john@example.com',
-    tags: ['VIP', 'Regular'],
-    visitCount: 15,
-    lastVisit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-  },
-  {
-    id: 'cust_2',
-    name: 'Sarah Davis',
-    phone: '+1987654321',
-    tags: ['Regular'],
-    visitCount: 8,
-    lastVisit: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  }
-];
-
-const mockOrders: Order[] = [
-  {
-    id: 'ord_1',
-    tableId: 't2',
-    tableNumber: '2',
-    groupId: 'grp_1',
-    status: 'confirmed',
-    type: 'dine-in',
-    items: [
-      {
-        id: 'oi_1',
-        menuItemId: 'm1',
-        menuItem: mockMenuItems[0],
-        quantity: 2,
-        price: 18.99,
-        status: 'preparing',
-        handledBy: 'Alice Johnson'
-      },
-      {
-        id: 'oi_2',
-        menuItemId: 'm2',
-        menuItem: mockMenuItems[1],
-        quantity: 1,
-        price: 12.50,
-        status: 'ready',
-        handledBy: 'Alice Johnson'
-      }
-    ],
-    subtotal: 50.48,
-    tax: 4.29,
-    serviceCharge: 5.05,
-    discount: 0,
-    discountType: 'flat',
-    total: 59.82,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 25 * 60 * 1000),
-    kotSent: true,
-    kotSentAt: new Date(Date.now() - 25 * 60 * 1000),
-    waiterId: 'waiter_1',
-    waiterName: 'Alice Johnson'
-  }
-];
-
 const mockMenuCategories: MenuCategory[] = [
   {
     id: 'cat_1',
@@ -504,6 +415,95 @@ const mockMenuItems: MenuItem[] = [
     isNew: false,
     isPopular: true,
     sortOrder: 1
+  }
+];
+
+const mockTableGroups: TableGroup[] = [
+  {
+    id: 'grp_1',
+    tableId: 't2',
+    name: 'Group A',
+    status: 'dining',
+    customerName: 'John Smith',
+    customerPhone: '+1234567890',
+    createdAt: new Date(Date.now() - 45 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000),
+    waiterId: 'waiter_1',
+    waiterName: 'Alice Johnson'
+  },
+  {
+    id: 'grp_2',
+    tableId: 't2',
+    name: 'Group B',
+    status: 'ordering',
+    customerName: 'Sarah Davis',
+    createdAt: new Date(Date.now() - 20 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+    waiterId: 'waiter_2',
+    waiterName: 'Bob Wilson'
+  }
+];
+
+const mockCustomers: Customer[] = [
+  {
+    id: 'cust_1',
+    name: 'John Smith',
+    phone: '+1234567890',
+    email: 'john@example.com',
+    tags: ['VIP', 'Regular'],
+    visitCount: 15,
+    lastVisit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'cust_2',
+    name: 'Sarah Davis',
+    phone: '+1987654321',
+    tags: ['Regular'],
+    visitCount: 8,
+    lastVisit: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  }
+];
+
+const mockOrders: Order[] = [
+  {
+    id: 'ord_1',
+    tableId: 't2',
+    tableNumber: '2',
+    groupId: 'grp_1',
+    status: 'confirmed',
+    type: 'dine-in',
+    items: [
+      {
+        id: 'oi_1',
+        menuItemId: 'm1',
+        menuItem: mockMenuItems[0],
+        quantity: 2,
+        price: 18.99,
+        status: 'preparing',
+        handledBy: 'Alice Johnson'
+      },
+      {
+        id: 'oi_2',
+        menuItemId: 'm2',
+        menuItem: mockMenuItems[1],
+        quantity: 1,
+        price: 12.50,
+        status: 'ready',
+        handledBy: 'Alice Johnson'
+      }
+    ],
+    subtotal: 50.48,
+    tax: 4.29,
+    serviceCharge: 5.05,
+    discount: 0,
+    discountType: 'flat',
+    total: 59.82,
+    createdAt: new Date(Date.now() - 30 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 25 * 60 * 1000),
+    kotSent: true,
+    kotSentAt: new Date(Date.now() - 25 * 60 * 1000),
+    waiterId: 'waiter_1',
+    waiterName: 'Alice Johnson'
   }
 ];
 

@@ -3,19 +3,30 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { Bell, Sun, Moon, Monitor, Wifi, WifiOff } from "lucide-react";
+import { Bell, Sun, Moon, Monitor, Wifi, WifiOff, Palette } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { OutletSwitcher } from "./OutletSwitcher";
+import { ThemeCustomizer } from "@/components/theme/ThemeCustomizer";
 import { useState, useEffect } from "react";
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { colorMode, setColorMode } = useTheme();
   const { currentOutlet } = useOrganization();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -74,25 +85,47 @@ export function Header() {
               </Badge>
             </Button>
 
-            {/* Theme Switcher */}
+            {/* Theme Customizer */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="touch-button">
+                  <Palette className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Theme Customization</SheetTitle>
+                  <SheetDescription>
+                    Customize your restaurant's brand colors and appearance
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6">
+                  <ThemeCustomizer />
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Quick Color Mode Switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="touch-button">
-                  {theme === 'light' && <Sun className="h-4 w-4" />}
-                  {theme === 'dark' && <Moon className="h-4 w-4" />}
-                  {theme === 'system' && <Monitor className="h-4 w-4" />}
+                  {colorMode === 'light' && <Sun className="h-4 w-4" />}
+                  {colorMode === 'dark' && <Moon className="h-4 w-4" />}
+                  {colorMode === 'system' && <Monitor className="h-4 w-4" />}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="glass">
-                <DropdownMenuItem onClick={() => setTheme('light')}>
+                <DropdownMenuLabel>Color Mode</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setColorMode('light')}>
                   <Sun className="mr-2 h-4 w-4" />
                   Light
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                <DropdownMenuItem onClick={() => setColorMode('dark')}>
                   <Moon className="mr-2 h-4 w-4" />
                   Dark
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme('system')}>
+                <DropdownMenuItem onClick={() => setColorMode('system')}>
                   <Monitor className="mr-2 h-4 w-4" />
                   System
                 </DropdownMenuItem>

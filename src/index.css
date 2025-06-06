@@ -3,47 +3,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Design System for Restaurant SaaS */
+/* Enhanced Design System for Restaurant SaaS with Multiple Themes */
 
 @layer base {
   :root {
-    /* Enhanced color palette */
+    /* Base system colors */
     --background: 248 250 252;
     --foreground: 15 23 42;
-
     --card: 255 255 255;
     --card-foreground: 15 23 42;
-
     --popover: 255 255 255;
     --popover-foreground: 15 23 42;
-
-    --primary: 34 197 94;
-    --primary-foreground: 255 255 255;
-
-    --secondary: 248 250 252;
-    --secondary-foreground: 51 65 85;
-
     --muted: 241 245 249;
     --muted-foreground: 100 116 139;
-
-    --accent: 59 130 246;
-    --accent-foreground: 255 255 255;
-
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
-
-    --warning: 245 158 11;
-    --warning-foreground: 255 255 255;
-
-    --success: 34 197 94;
-    --success-foreground: 255 255 255;
-
     --border: 226 232 240;
     --input: 226 232 240;
     --ring: 34 197 94;
-
     --radius: 12px;
-
+    
+    /* Default Modern Theme */
+    --primary: 34 197 94;
+    --primary-foreground: 255 255 255;
+    --secondary: 245 158 11;
+    --secondary-foreground: 255 255 255;
+    --accent: 59 130 246;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    
     /* Sidebar colors */
     --sidebar-background: 255 255 255;
     --sidebar-foreground: 51 65 85;
@@ -53,52 +40,110 @@
     --sidebar-accent-foreground: 51 65 85;
     --sidebar-border: 226 232 240;
     --sidebar-ring: 34 197 94;
-
-    /* Status colors */
-    --status-new: 59 130 246;
-    --status-preparing: 245 158 11;
-    --status-ready: 34 197 94;
-    --status-served: 139 69 19;
-    --status-cancelled: 239 68 68;
   }
 
+  /* Dark mode base */
   .dark {
     --background: 2 6 23;
     --foreground: 248 250 252;
-
     --card: 15 23 42;
     --card-foreground: 248 250 252;
-
     --popover: 15 23 42;
     --popover-foreground: 248 250 252;
-
-    --primary: 34 197 94;
-    --primary-foreground: 2 6 23;
-
-    --secondary: 30 41 59;
-    --secondary-foreground: 226 232 240;
-
     --muted: 30 41 59;
     --muted-foreground: 148 163 184;
-
-    --accent: 59 130 246;
-    --accent-foreground: 248 250 252;
-
-    --destructive: 239 68 68;
-    --destructive-foreground: 248 250 252;
-
     --border: 30 41 59;
     --input: 30 41 59;
-    --ring: 34 197 94;
-
     --sidebar-background: 15 23 42;
     --sidebar-foreground: 226 232 240;
-    --sidebar-primary: 34 197 94;
-    --sidebar-primary-foreground: 15 23 42;
     --sidebar-accent: 30 41 59;
     --sidebar-accent-foreground: 226 232 240;
     --sidebar-border: 30 41 59;
-    --sidebar-ring: 34 197 94;
+  }
+
+  /* Theme Presets */
+  
+  /* Modern Fresh Theme (Default) */
+  [data-theme="modern"] {
+    --primary: 34 197 94;
+    --secondary: 245 158 11;
+    --accent: 59 130 246;
+  }
+
+  /* Classic Warm Theme */
+  [data-theme="classic"] {
+    --primary: 220 38 38;
+    --secondary: 245 158 11;
+    --accent: 124 45 18;
+    --background: 254 252 232;
+    --card: 255 255 255;
+  }
+  
+  [data-theme="classic"].dark {
+    --background: 12 10 9;
+    --card: 23 20 18;
+  }
+
+  /* Vibrant Energy Theme */
+  [data-theme="vibrant"] {
+    --primary: 249 115 22;
+    --secondary: 236 72 153;
+    --accent: 139 92 246;
+    --background: 255 251 235;
+  }
+
+  [data-theme="vibrant"].dark {
+    --background: 7 12 23;
+    --card: 15 23 42;
+  }
+
+  /* Elegant Fine Theme */
+  [data-theme="elegant"] {
+    --primary: 99 102 241;
+    --secondary: 139 92 246;
+    --accent: 217 70 239;
+    --background: 250 249 255;
+  }
+
+  [data-theme="elegant"].dark {
+    --background: 8 8 23;
+    --card: 15 15 35;
+  }
+
+  /* Rustic Natural Theme */
+  [data-theme="rustic"] {
+    --primary: 5 150 105;
+    --secondary: 146 64 14;
+    --accent: 180 83 9;
+    --background: 247 254 231;
+  }
+
+  [data-theme="rustic"].dark {
+    --background: 12 15 8;
+    --card: 20 25 15;
+  }
+
+  /* Minimalist Clean Theme */
+  [data-theme="minimalist"] {
+    --primary: 55 65 81;
+    --secondary: 107 114 128;
+    --accent: 156 163 175;
+    --background: 255 255 255;
+    --muted: 249 250 251;
+  }
+
+  [data-theme="minimalist"].dark {
+    --background: 17 24 39;
+    --card: 31 41 55;
+  }
+
+  /* Custom Colors Override */
+  [data-custom-colors="true"] {
+    --primary: var(--custom-primary);
+    --secondary: var(--custom-secondary);
+    --accent: var(--custom-accent);
+    --sidebar-primary: var(--custom-primary);
+    --ring: var(--custom-primary);
   }
 }
 
@@ -111,14 +156,13 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
 }
 
 @layer components {
-  /* Status badges */
+  /* Enhanced Status badges with better food industry colors */
   .status-new {
     @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300;
   }
@@ -139,61 +183,70 @@
     @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
   }
 
-  /* Card hover effects */
+  /* Enhanced card hover effects */
   .card-hover {
-    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:scale-[1.02];
   }
 
-  /* Glass effect */
+  /* Themed glass effect */
   .glass {
-    @apply backdrop-blur-sm bg-white/80 dark:bg-gray-900/80;
+    @apply backdrop-blur-md bg-background/80 dark:bg-background/60;
   }
 
-  /* Mobile-first responsive grid */
+  /* Enhanced responsive grid */
   .responsive-grid {
-    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5;
   }
 
-  /* Quick action buttons */
+  /* Enhanced quick action buttons */
   .quick-action {
-    @apply flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105;
+    @apply flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 touch-manipulation;
   }
 
-  /* Touch-friendly buttons for mobile */
+  /* Touch-friendly buttons optimized for restaurant staff */
   .touch-button {
-    @apply min-h-[44px] min-w-[44px] touch-manipulation;
+    @apply min-h-[48px] min-w-[48px] touch-manipulation select-none;
   }
 
-  /* Status indicators */
+  /* Enhanced status indicators */
   .status-dot {
-    @apply w-3 h-3 rounded-full animate-pulse;
+    @apply w-3 h-3 rounded-full animate-pulse shadow-sm;
   }
 
-  /* Loading states */
+  /* Loading states with theme colors */
   .skeleton {
-    @apply animate-pulse bg-muted rounded;
+    @apply animate-pulse bg-muted rounded-md;
+  }
+
+  /* Theme-aware gradient backgrounds */
+  .gradient-bg {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--secondary) / 0.1));
+  }
+
+  /* Enhanced focus styles for accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* Restaurant-specific UI components */
+  .table-card {
+    @apply relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .order-item {
+    @apply flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors;
+  }
+
+  .menu-category {
+    @apply p-4 rounded-lg border border-border bg-gradient-to-br from-primary/5 to-secondary/5 hover:from-primary/10 hover:to-secondary/10 transition-all;
   }
 }
 
-/* PWA optimizations */
-@media (display-mode: standalone) {
-  body {
-    @apply select-none;
-  }
-}
-
-/* Print styles */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-}
-
-/* Animation keyframes */
-@keyframes slideIn {
+/* Enhanced animations */
+@keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -201,34 +254,112 @@
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
 }
 
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease-out;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
 }
 
-/* Accessibility improvements */
+.animate-bounce-gentle {
+  animation: bounce 1s ease-in-out;
+}
+
+/* PWA and mobile optimizations */
+@media (display-mode: standalone) {
+  body {
+    @apply select-none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
+
+  .selectable {
+    @apply select-text;
+    -webkit-user-select: text;
+  }
+}
+
+/* Print optimizations for receipts */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    @apply text-black bg-white;
+  }
+  
+  .print-receipt {
+    @apply max-w-none w-full;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0 0;
+    --ring: 0 0 0;
+  }
+  
+  .status-dot {
+    @apply border-2 border-foreground;
+  }
+}
+
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  
+  .card-hover {
+    @apply hover:transform-none;
+  }
 }
 
-/* Focus styles for keyboard navigation */
-.focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground;
 }

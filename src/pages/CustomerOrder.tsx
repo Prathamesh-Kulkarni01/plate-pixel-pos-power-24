@@ -14,7 +14,8 @@ import {
   ShoppingCart, 
   User,
   Clock,
-  DollarSign
+  DollarSign,
+  ChevronRight
 } from "lucide-react";
 
 const CustomerOrder = () => {
@@ -26,7 +27,8 @@ const CustomerOrder = () => {
     createOrder, 
     calculateOrderTotals,
     orders,
-    menuCategories 
+    menuCategories,
+    getCategoriesByParent 
   } = useRestaurant();
   
   const [orderType, setOrderType] = useState<'individual' | 'group'>('individual');
@@ -64,18 +66,47 @@ const CustomerOrder = () => {
     return category?.name || 'Unknown';
   };
 
+  const getFullCategoryPath = (categoryId: string): string => {
+    const category = menuCategories?.find(cat => cat.id === categoryId);
+    if (!category) return 'Unknown';
+    
+    if (category.parentCategoryId) {
+      const parentPath = getFullCategoryPath(category.parentCategoryId);
+      return `${parentPath} > ${category.name}`;
+    }
+    
+    return category.name;
+  };
+
   const getMenuItemPrice = (menuItem: any) => {
-    // If the item has variants, get the price from the first variant or base price
     if (menuItem.variants && menuItem.variants.length > 0) {
       return menuItem.variants[0].price || menuItem.basePrice || 0;
     }
     return menuItem.basePrice || 0;
   };
 
-  const categoryNames = ['all', ...(menuCategories?.map(cat => cat.name) || [])];
+  const mainCategories = getCategoriesByParent();
+  const allCategories = ['all', ...mainCategories.map(cat => cat.id)];
+  
+  // Add subcategories to the filter
+  mainCategories.forEach(mainCat => {
+    const subcategories = getCategoriesByParent(mainCat.id);
+    subcategories.forEach(subCat => {
+      allCategories.push(subCat.id);
+    });
+  });
+
   const filteredItems = selectedCategory === 'all' 
     ? (menuItems || []).filter(item => item.isAvailable)
-    : (menuItems || []).filter(item => getCategoryName(item.categoryId) === selectedCategory && item.isAvailable);
+    : (menuItems || []).filter(item => {
+        if (item.categoryId === selectedCategory) return item.isAvailable;
+        
+        // Check if selected category is a parent of item's category
+        const itemCategory = menuCategories?.find(cat => cat.id === item.categoryId);
+        if (itemCategory?.parentCategoryId === selectedCategory) return item.isAvailable;
+        
+        return false;
+      });
 
   const addToCart = (menuItem: any) => {
     const itemPrice = getMenuItemPrice(menuItem);
@@ -97,7 +128,6 @@ const CustomerOrder = () => {
         }]);
       }
     } else {
-      // Add to current group member's items
       const newGroupMembers = [...groupMembers];
       const memberItems = newGroupMembers[currentMember].items;
       const existingItem = memberItems.find(item => item.menuItemId === menuItem.id);
@@ -175,7 +205,6 @@ const CustomerOrder = () => {
 
     createOrder(orderData);
     
-    // Reset form
     setCart([]);
     setGroupMembers([{ name: '', items: [] }]);
     setCustomerName('');
@@ -293,25 +322,67 @@ const CustomerOrder = () => {
             <CardTitle>Menu</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Category Filter */}
-            <div className="flex gap-2 mb-4 overflow-x-auto">
-              {categoryNames.map(category => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className="whitespace-nowrap"
-                >
-                  {category === 'all' ? 'All' : category.charAt(0).toUpperCase() + category.slice(1)}
-                </Button>
-              ))}
+            {/* Category Filter with Hierarchy */}
+            <div className="space-y-3 mb-6">
+              {/* All Items */}
+              <Button
+                variant={selectedCategory === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory('all')}
+                className="w-full justify-start"
+              >
+                All Items
+              </Button>
+
+              {/* Main Categories with Subcategories */}
+              {mainCategories.map(mainCat => {
+                const subcategories = getCategoriesByParent(mainCat.id);
+                const isMainSelected = selectedCategory === mainCat.id;
+                const hasSubSelected = subcategories.some(sub => selectedCategory === sub.id);
+
+                return (
+                  <div key={mainCat.id} className="space-y-1">
+                    <Button
+                      variant={isMainSelected ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedCategory(mainCat.id)}
+                      className="w-full justify-start"
+                    >
+                      {mainCat.name}
+                      {subcategories.length > 0 && (
+                        <ChevronRight className={`ml-auto h-4 w-4 transition-transform ${
+                          isMainSelected || hasSubSelected ? 'rotate-90' : ''
+                        }`} />
+                      )}
+                    </Button>
+
+                    {/* Subcategories */}
+                    {subcategories.length > 0 && (isMainSelected || hasSubSelected) && (
+                      <div className="ml-4 space-y-1">
+                        {subcategories.map(subCat => (
+                          <Button
+                            key={subCat.id}
+                            variant={selectedCategory === subCat.id ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSelectedCategory(subCat.id)}
+                            className="w-full justify-start text-sm"
+                          >
+                            {subCat.name}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Menu Items */}
             <div className="space-y-4">
               {filteredItems.map(item => {
                 const itemPrice = getMenuItemPrice(item);
+                const categoryPath = getFullCategoryPath(item.categoryId);
+                
                 return (
                   <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex-1">
@@ -322,6 +393,9 @@ const CustomerOrder = () => {
                         <Badge variant="outline" className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {item.preparationTime}m
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {categoryPath}
                         </Badge>
                       </div>
                     </div>

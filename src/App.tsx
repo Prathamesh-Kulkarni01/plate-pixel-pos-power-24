@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import CustomerOrder from "./pages/CustomerOrder";
 
 // Layout
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -44,6 +45,7 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/" element={<Index />} />
+                  <Route path="/customer/:qrCode" element={<CustomerOrder />} />
                   <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/orders" element={<Orders />} />

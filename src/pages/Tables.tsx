@@ -1,240 +1,124 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRestaurant } from "@/contexts/RestaurantContext";
-import { Users, Clock, DollarSign, Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import { TableCard } from "@/components/tables/TableCard";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Users, Clock, CheckCircle, Wrench } from "lucide-react";
 
 const Tables = () => {
   const { tables, updateTableStatus } = useRestaurant();
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return 'bg-green-500';
-      case 'occupied': return 'bg-red-500';
-      case 'reserved': return 'bg-yellow-500';
-      case 'cleaning': return 'bg-blue-500';
-      default: return 'bg-gray-400';
-    }
-  };
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'available': return 'default';
-      case 'occupied': return 'destructive';
-      case 'reserved': return 'secondary';
-      case 'cleaning': return 'outline';
-      default: return 'secondary';
-    }
-  };
+  const filteredTables = tables.filter(table => 
+    table.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table.section.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const sections = [...new Set(tables.map(table => table.section))];
+
+  const stats = [
+    {
+      title: "Available",
+      value: tables.filter(t => t.status === 'available').length,
+      icon: CheckCircle,
+      color: 'green' as const
+    },
+    {
+      title: "Occupied",
+      value: tables.filter(t => t.status === 'occupied').length,
+      icon: Users,
+      color: 'red' as const
+    },
+    {
+      title: "Reserved",
+      value: tables.filter(t => t.status === 'reserved').length,
+      icon: Clock,
+      color: 'orange' as const
+    },
+    {
+      title: "Cleaning",
+      value: tables.filter(t => t.status === 'cleaning').length,
+      icon: Wrench,
+      color: 'blue' as const
+    }
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Table Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Table Management</h1>
           <p className="text-muted-foreground">
             Monitor and manage table status across your restaurant
           </p>
         </div>
-        <Button className="mt-4 sm:mt-0">
+        <Button className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add Table
         </Button>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search tables..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <div>
-                <p className="text-sm font-medium">Available</p>
-                <p className="text-2xl font-bold">
-                  {tables.filter(t => t.status === 'available').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div>
-                <p className="text-sm font-medium">Occupied</p>
-                <p className="text-2xl font-bold">
-                  {tables.filter(t => t.status === 'occupied').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div>
-                <p className="text-sm font-medium">Reserved</p>
-                <p className="text-2xl font-bold">
-                  {tables.filter(t => t.status === 'reserved').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <div>
-                <p className="text-sm font-medium">Cleaning</p>
-                <p className="text-2xl font-bold">
-                  {tables.filter(t => t.status === 'cleaning').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="responsive-grid">
+        {stats.map((stat) => (
+          <StatsCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            color={stat.color}
+          />
+        ))}
       </div>
 
       {/* Tables by Section */}
       {sections.map((section) => (
         <div key={section} className="space-y-4">
-          <h2 className="text-xl font-semibold">{section} Section</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {tables
+          <h2 className="text-lg md:text-xl font-semibold capitalize">
+            {section} Section
+          </h2>
+          <div className="responsive-grid">
+            {filteredTables
               .filter(table => table.section === section)
               .map((table) => (
-                <Card key={table.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Table {table.number}</CardTitle>
-                      <div className={`w-3 h-3 rounded-full ${getStatusColor(table.status)}`}></div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-4">
-                      {/* Table Info */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{table.capacity} seats</span>
-                        </div>
-                        <Badge variant={getStatusVariant(table.status)} className="capitalize">
-                          {table.status}
-                        </Badge>
-                      </div>
-
-                      {/* Order Info (if occupied) */}
-                      {table.status === 'occupied' && table.currentOrderId && (
-                        <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-                          <div className="flex items-center space-x-2">
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Current Order: {table.currentOrderId}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">Started 25 min ago</span>
-                          </div>
-                          <div className="text-sm font-semibold">Total: $47.51</div>
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="space-y-2">
-                        {table.status === 'available' && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              className="w-full"
-                              onClick={() => updateTableStatus(table.id, 'occupied')}
-                            >
-                              Seat Customers
-                            </Button>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => updateTableStatus(table.id, 'reserved')}
-                              >
-                                Reserve
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => updateTableStatus(table.id, 'cleaning')}
-                              >
-                                Clean
-                              </Button>
-                            </div>
-                          </>
-                        )}
-
-                        {table.status === 'occupied' && (
-                          <>
-                            <Button size="sm" className="w-full">
-                              View Order
-                            </Button>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => updateTableStatus(table.id, 'cleaning')}
-                              >
-                                Clear Table
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                Take Payment
-                              </Button>
-                            </div>
-                          </>
-                        )}
-
-                        {table.status === 'reserved' && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              className="w-full"
-                              onClick={() => updateTableStatus(table.id, 'occupied')}
-                            >
-                              Seat Reserved Party
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="w-full"
-                              onClick={() => updateTableStatus(table.id, 'available')}
-                            >
-                              Cancel Reservation
-                            </Button>
-                          </>
-                        )}
-
-                        {table.status === 'cleaning' && (
-                          <Button 
-                            size="sm" 
-                            className="w-full"
-                            onClick={() => updateTableStatus(table.id, 'available')}
-                          >
-                            Mark Clean
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  onStatusChange={updateTableStatus}
+                />
               ))}
           </div>
         </div>
       ))}
+
+      {/* Empty State */}
+      {filteredTables.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-10">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <div className="text-lg font-medium mb-2">No tables found</div>
+            <div className="text-muted-foreground">
+              {searchTerm ? 'Try adjusting your search criteria.' : 'Add tables to get started.'}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

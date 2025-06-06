@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,8 @@ interface MenuItemFormData {
   allergens: string[];
   preparationTime: number;
   calories: number;
+  rating: number;
+  reviewCount: number;
   variants: MenuVariant[];
   modifiers: MenuItemModifier[];
   addons: MenuItemAddon[];
@@ -65,6 +66,8 @@ const MenuItemManager = () => {
     allergens: [],
     preparationTime: 10,
     calories: 0,
+    rating: 0,
+    reviewCount: 0,
     variants: [],
     modifiers: [],
     addons: [],
@@ -112,6 +115,8 @@ const MenuItemManager = () => {
       allergens: [],
       preparationTime: 10,
       calories: 0,
+      rating: 0,
+      reviewCount: 0,
       variants: [],
       modifiers: [],
       addons: [],
@@ -142,6 +147,8 @@ const MenuItemManager = () => {
       allergens: item.allergens,
       preparationTime: item.preparationTime,
       calories: item.calories || 0,
+      rating: item.rating,
+      reviewCount: item.reviewCount,
       variants: item.variants || [],
       modifiers: item.modifiers || [],
       addons: item.addons || [],
@@ -505,7 +512,6 @@ const MenuItemManager = () => {
         </Dialog>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
@@ -529,7 +535,6 @@ const MenuItemManager = () => {
         </Select>
       </div>
 
-      {/* Menu Items List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item) => (
           <Card key={item.id} className={`hover:shadow-md transition-all ${!item.isAvailable ? 'opacity-75' : ''}`}>

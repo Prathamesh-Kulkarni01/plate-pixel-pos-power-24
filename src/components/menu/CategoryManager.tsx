@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,7 @@ const CategoryManager = () => {
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
     description: '',
-    parentCategoryId: '',
+    parentCategoryId: 'none',
     isActive: true,
     sortOrder: 1
   });
@@ -41,7 +40,7 @@ const CategoryManager = () => {
     
     const categoryData = {
       ...formData,
-      parentCategoryId: formData.parentCategoryId || undefined
+      parentCategoryId: formData.parentCategoryId === 'none' ? undefined : formData.parentCategoryId
     };
 
     if (editingCategory) {
@@ -58,7 +57,7 @@ const CategoryManager = () => {
     setFormData({
       name: '',
       description: '',
-      parentCategoryId: '',
+      parentCategoryId: 'none',
       isActive: true,
       sortOrder: 1
     });
@@ -70,7 +69,7 @@ const CategoryManager = () => {
     setFormData({
       name: category.name,
       description: category.description || '',
-      parentCategoryId: category.parentCategoryId || '',
+      parentCategoryId: category.parentCategoryId || 'none',
       isActive: category.isActive,
       sortOrder: category.sortOrder
     });
@@ -130,7 +129,7 @@ const CategoryManager = () => {
                     <SelectValue placeholder="Select parent category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Main Category)</SelectItem>
+                    <SelectItem value="none">None (Main Category)</SelectItem>
                     {mainCategories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -210,7 +209,6 @@ const CategoryManager = () => {
                 <div className="mt-2 text-xs text-muted-foreground">
                   Sort Order: {category.sortOrder}
                 </div>
-                {/* Show subcategories */}
                 {subCategories.filter(sub => sub.parentCategoryId === category.id).length > 0 && (
                   <div className="mt-3">
                     <div className="text-xs font-medium text-muted-foreground mb-2">Subcategories:</div>

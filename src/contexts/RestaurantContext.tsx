@@ -22,9 +22,36 @@ export interface Table {
   number: string;
   capacity: number;
   status: 'available' | 'occupied' | 'reserved' | 'cleaning';
-  currentOrderId?: string;
   section: string;
   qrCode: string;
+  activeGroupCount: number;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  tags: string[]; // VIP, Regular, etc.
+  visitCount: number;
+  lastVisit?: Date;
+}
+
+export interface TableGroup {
+  id: string;
+  tableId: string;
+  name: string; // Group A, Group B, etc.
+  status: 'active' | 'ordering' | 'dining' | 'billing' | 'paid';
+  customerId?: string;
+  customer?: Customer;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  waiterId?: string;
+  waiterName?: string;
 }
 
 export interface OrderItem {
@@ -34,32 +61,35 @@ export interface OrderItem {
   quantity: number;
   notes?: string;
   price: number;
-}
-
-export interface GroupMember {
-  id: string;
-  name: string;
-  items: OrderItem[];
-  subtotal: number;
+  status: 'ordered' | 'sent_to_kitchen' | 'preparing' | 'ready' | 'served';
+  kitchenNotes?: string;
+  servedAt?: Date;
+  handledBy?: string; // waiter who handled this item
 }
 
 export interface Order {
   id: string;
   tableId: string;
   tableNumber: string;
+  groupId: string;
+  group?: TableGroup;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid';
-  type: 'individual' | 'group';
+  type: 'dine-in' | 'takeaway';
   items: OrderItem[];
-  groupMembers?: GroupMember[];
   subtotal: number;
   tax: number;
   serviceCharge: number;
+  discount: number;
+  discountType: 'percentage' | 'flat';
+  discountReason?: string;
   total: number;
-  customerName?: string;
-  customerPhone?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  kotSent: boolean;
+  kotSentAt?: Date;
+  waiterId?: string;
+  waiterName?: string;
 }
 
 export interface MenuCategory {
@@ -134,18 +164,35 @@ export interface MenuItem {
 interface RestaurantContextType {
   restaurant: Restaurant | null;
   tables: Table[];
+  tableGroups: TableGroup[];
   orders: Order[];
+  customers: Customer[];
   menuItems: MenuItem[];
   menuCategories: MenuCategory[];
   updateTableStatus: (tableId: string, status: Table['status']) => void;
   getAvailableTables: () => Table[];
+  // Group management
+  createTableGroup: (tableId: string, groupData: Omit<TableGroup, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateTableGroup: (groupId: string, updates: Partial<TableGroup>) => void;
+  deleteTableGroup: (groupId: string) => void;
+  getGroupsByTable: (tableId: string) => TableGroup[];
+  getActiveGroupsByTable: (tableId: string) => TableGroup[];
+  // Order management
   createOrder: (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => string;
   updateOrder: (orderId: string, updates: Partial<Order>) => void;
   addItemToOrder: (orderId: string, item: Omit<OrderItem, 'id'>) => void;
   removeItemFromOrder: (orderId: string, itemId: string) => void;
+  updateOrderItemStatus: (orderId: string, itemId: string, status: OrderItem['status']) => void;
+  sendKOT: (orderId: string) => void;
   getOrderById: (orderId: string) => Order | undefined;
+  getOrdersByGroup: (groupId: string) => Order[];
   getOrdersByTable: (tableId: string) => Order[];
-  calculateOrderTotals: (items: OrderItem[]) => { subtotal: number; tax: number; serviceCharge: number; total: number };
+  calculateOrderTotals: (items: OrderItem[], discount?: number, discountType?: 'percentage' | 'flat') => { subtotal: number; tax: number; serviceCharge: number; total: number };
+  // Customer management
+  createCustomer: (customer: Omit<Customer, 'id' | 'visitCount' | 'lastVisit'>) => string;
+  updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
+  getCustomerById: (customerId: string) => Customer | undefined;
+  searchCustomers: (query: string) => Customer[];
   // Menu management functions
   createCategory: (category: Omit<MenuCategory, 'id'>) => string;
   updateCategory: (categoryId: string, updates: Partial<MenuCategory>) => void;
@@ -177,12 +224,101 @@ const mockRestaurant: Restaurant = {
 };
 
 const mockTables: Table[] = [
-  { id: 't1', number: '1', capacity: 2, status: 'available', section: 'Main', qrCode: 'QR_T1_BELLA_VISTA' },
-  { id: 't2', number: '2', capacity: 4, status: 'occupied', currentOrderId: 'ord_1', section: 'Main', qrCode: 'QR_T2_BELLA_VISTA' },
-  { id: 't3', number: '3', capacity: 6, status: 'available', section: 'Main', qrCode: 'QR_T3_BELLA_VISTA' },
-  { id: 't4', number: '4', capacity: 2, status: 'reserved', section: 'Patio', qrCode: 'QR_T4_BELLA_VISTA' },
-  { id: 't5', number: '5', capacity: 4, status: 'available', section: 'Patio', qrCode: 'QR_T5_BELLA_VISTA' },
-  { id: 't6', number: '6', capacity: 8, status: 'cleaning', section: 'Private', qrCode: 'QR_T6_BELLA_VISTA' },
+  { id: 't1', number: '1', capacity: 2, status: 'available', section: 'Main', qrCode: 'QR_T1_BELLA_VISTA', activeGroupCount: 0 },
+  { id: 't2', number: '2', capacity: 4, status: 'occupied', section: 'Main', qrCode: 'QR_T2_BELLA_VISTA', activeGroupCount: 2 },
+  { id: 't3', number: '3', capacity: 6, status: 'available', section: 'Main', qrCode: 'QR_T3_BELLA_VISTA', activeGroupCount: 0 },
+  { id: 't4', number: '4', capacity: 2, status: 'reserved', section: 'Patio', qrCode: 'QR_T4_BELLA_VISTA', activeGroupCount: 0 },
+  { id: 't5', number: '5', capacity: 4, status: 'available', section: 'Patio', qrCode: 'QR_T5_BELLA_VISTA', activeGroupCount: 0 },
+  { id: 't6', number: '6', capacity: 8, status: 'cleaning', section: 'Private', qrCode: 'QR_T6_BELLA_VISTA', activeGroupCount: 0 },
+];
+
+const mockTableGroups: TableGroup[] = [
+  {
+    id: 'grp_1',
+    tableId: 't2',
+    name: 'Group A',
+    status: 'dining',
+    customerName: 'John Smith',
+    customerPhone: '+1234567890',
+    createdAt: new Date(Date.now() - 45 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000),
+    waiterId: 'waiter_1',
+    waiterName: 'Alice Johnson'
+  },
+  {
+    id: 'grp_2',
+    tableId: 't2',
+    name: 'Group B',
+    status: 'ordering',
+    customerName: 'Sarah Davis',
+    createdAt: new Date(Date.now() - 20 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+    waiterId: 'waiter_2',
+    waiterName: 'Bob Wilson'
+  }
+];
+
+const mockCustomers: Customer[] = [
+  {
+    id: 'cust_1',
+    name: 'John Smith',
+    phone: '+1234567890',
+    email: 'john@example.com',
+    tags: ['VIP', 'Regular'],
+    visitCount: 15,
+    lastVisit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'cust_2',
+    name: 'Sarah Davis',
+    phone: '+1987654321',
+    tags: ['Regular'],
+    visitCount: 8,
+    lastVisit: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  }
+];
+
+const mockOrders: Order[] = [
+  {
+    id: 'ord_1',
+    tableId: 't2',
+    tableNumber: '2',
+    groupId: 'grp_1',
+    status: 'confirmed',
+    type: 'dine-in',
+    items: [
+      {
+        id: 'oi_1',
+        menuItemId: 'm1',
+        menuItem: mockMenuItems[0],
+        quantity: 2,
+        price: 18.99,
+        status: 'preparing',
+        handledBy: 'Alice Johnson'
+      },
+      {
+        id: 'oi_2',
+        menuItemId: 'm2',
+        menuItem: mockMenuItems[1],
+        quantity: 1,
+        price: 12.50,
+        status: 'ready',
+        handledBy: 'Alice Johnson'
+      }
+    ],
+    subtotal: 50.48,
+    tax: 4.29,
+    serviceCharge: 5.05,
+    discount: 0,
+    discountType: 'flat',
+    total: 59.82,
+    createdAt: new Date(Date.now() - 30 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 25 * 60 * 1000),
+    kotSent: true,
+    kotSentAt: new Date(Date.now() - 25 * 60 * 1000),
+    waiterId: 'waiter_1',
+    waiterName: 'Alice Johnson'
+  }
 ];
 
 const mockMenuCategories: MenuCategory[] = [
@@ -371,44 +507,12 @@ const mockMenuItems: MenuItem[] = [
   }
 ];
 
-const mockOrders: Order[] = [
-  {
-    id: 'ord_1',
-    tableId: 't2',
-    tableNumber: '2',
-    status: 'confirmed',
-    type: 'individual',
-    items: [
-      {
-        id: 'oi_1',
-        menuItemId: 'm1',
-        menuItem: mockMenuItems[0],
-        quantity: 2,
-        price: 18.99
-      },
-      {
-        id: 'oi_2',
-        menuItemId: 'm2',
-        menuItem: mockMenuItems[1],
-        quantity: 1,
-        price: 12.50
-      }
-    ],
-    subtotal: 50.48,
-    tax: 4.29,
-    serviceCharge: 5.05,
-    total: 59.82,
-    customerName: 'John Doe',
-    customerPhone: '+1234567890',
-    createdAt: new Date(Date.now() - 30 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 25 * 60 * 1000)
-  }
-];
-
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [restaurant] = useState<Restaurant>(mockRestaurant);
   const [tables, setTables] = useState<Table[]>(mockTables);
+  const [tableGroups, setTableGroups] = useState<TableGroup[]>(mockTableGroups);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [customers, setCustomers] = useState<Customer[]>(mockCustomers);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(mockMenuItems);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(mockMenuCategories);
 
@@ -422,36 +526,97 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return tables.filter(table => table.status === 'available');
   };
 
-  const calculateOrderTotals = (items: OrderItem[]) => {
+  // Group management functions
+  const createTableGroup = (tableId: string, groupData: Omit<TableGroup, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const groupId = `grp_${Date.now()}`;
+    const newGroup: TableGroup = {
+      ...groupData,
+      id: groupId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    setTableGroups(prev => [...prev, newGroup]);
+    
+    // Update table status and group count
+    setTables(prev => prev.map(table => 
+      table.id === tableId ? { 
+        ...table, 
+        status: 'occupied', 
+        activeGroupCount: table.activeGroupCount + 1 
+      } : table
+    ));
+
+    return groupId;
+  };
+
+  const updateTableGroup = (groupId: string, updates: Partial<TableGroup>) => {
+    setTableGroups(prev => prev.map(group => 
+      group.id === groupId 
+        ? { ...group, ...updates, updatedAt: new Date() }
+        : group
+    ));
+  };
+
+  const deleteTableGroup = (groupId: string) => {
+    const group = tableGroups.find(g => g.id === groupId);
+    if (group) {
+      setTableGroups(prev => prev.filter(g => g.id !== groupId));
+      
+      // Update table group count
+      setTables(prev => prev.map(table => 
+        table.id === group.tableId ? { 
+          ...table, 
+          activeGroupCount: Math.max(0, table.activeGroupCount - 1),
+          status: table.activeGroupCount <= 1 ? 'available' : table.status
+        } : table
+      ));
+      
+      // Remove orders for this group
+      setOrders(prev => prev.filter(order => order.groupId !== groupId));
+    }
+  };
+
+  const getGroupsByTable = (tableId: string) => {
+    return tableGroups.filter(group => group.tableId === tableId);
+  };
+
+  const getActiveGroupsByTable = (tableId: string) => {
+    return tableGroups.filter(group => group.tableId === tableId && group.status !== 'paid');
+  };
+
+  const calculateOrderTotals = (items: OrderItem[], discount: number = 0, discountType: 'percentage' | 'flat' = 'flat') => {
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * (restaurant?.settings.taxRate || 0) / 100;
-    const serviceCharge = subtotal * (restaurant?.settings.serviceCharge || 0) / 100;
-    const total = subtotal + tax + serviceCharge;
+    
+    let discountAmount = 0;
+    if (discountType === 'percentage') {
+      discountAmount = (subtotal * discount) / 100;
+    } else {
+      discountAmount = discount;
+    }
+    
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const tax = discountedSubtotal * (restaurant?.settings.taxRate || 0) / 100;
+    const serviceCharge = discountedSubtotal * (restaurant?.settings.serviceCharge || 0) / 100;
+    const total = discountedSubtotal + tax + serviceCharge;
     
     return { subtotal, tax, serviceCharge, total };
   };
 
   const createOrder = (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
     const orderId = `ord_${Date.now()}`;
-    const totals = calculateOrderTotals(orderData.items);
+    const totals = calculateOrderTotals(orderData.items, orderData.discount, orderData.discountType);
     
     const newOrder: Order = {
       ...orderData,
       id: orderId,
       ...totals,
+      kotSent: false,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
     setOrders(prev => [...prev, newOrder]);
-    
-    // Update table status to occupied
-    setTables(prev => prev.map(table => 
-      table.id === orderData.tableId 
-        ? { ...table, status: 'occupied', currentOrderId: orderId }
-        : table
-    ));
-
     return orderId;
   };
 
@@ -470,7 +635,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setOrders(prev => prev.map(order => {
       if (order.id === orderId) {
         const newItems = [...order.items, newItem];
-        const totals = calculateOrderTotals(newItems);
+        const totals = calculateOrderTotals(newItems, order.discount, order.discountType);
         return {
           ...order,
           items: newItems,
@@ -486,7 +651,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setOrders(prev => prev.map(order => {
       if (order.id === orderId) {
         const newItems = order.items.filter(item => item.id !== itemId);
-        const totals = calculateOrderTotals(newItems);
+        const totals = calculateOrderTotals(newItems, order.discount, order.discountType);
         return {
           ...order,
           items: newItems,
@@ -498,12 +663,83 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
   };
 
+  const updateOrderItemStatus = (orderId: string, itemId: string, status: OrderItem['status']) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id === orderId) {
+        const newItems = order.items.map(item => 
+          item.id === itemId 
+            ? { ...item, status, servedAt: status === 'served' ? new Date() : item.servedAt }
+            : item
+        );
+        return {
+          ...order,
+          items: newItems,
+          updatedAt: new Date()
+        };
+      }
+      return order;
+    }));
+  };
+
+  const sendKOT = (orderId: string) => {
+    setOrders(prev => prev.map(order => 
+      order.id === orderId 
+        ? { 
+            ...order, 
+            kotSent: true, 
+            kotSentAt: new Date(),
+            items: order.items.map(item => ({
+              ...item,
+              status: item.status === 'ordered' ? 'sent_to_kitchen' : item.status
+            })),
+            updatedAt: new Date() 
+          }
+        : order
+    ));
+  };
+
   const getOrderById = (orderId: string) => {
     return orders.find(order => order.id === orderId);
   };
 
+  const getOrdersByGroup = (groupId: string) => {
+    return orders.filter(order => order.groupId === groupId);
+  };
+
   const getOrdersByTable = (tableId: string) => {
     return orders.filter(order => order.tableId === tableId);
+  };
+
+  // Customer management functions
+  const createCustomer = (customerData: Omit<Customer, 'id' | 'visitCount' | 'lastVisit'>) => {
+    const customerId = `cust_${Date.now()}`;
+    const newCustomer: Customer = {
+      ...customerData,
+      id: customerId,
+      visitCount: 0,
+      lastVisit: new Date()
+    };
+    setCustomers(prev => [...prev, newCustomer]);
+    return customerId;
+  };
+
+  const updateCustomer = (customerId: string, updates: Partial<Customer>) => {
+    setCustomers(prev => prev.map(customer => 
+      customer.id === customerId ? { ...customer, ...updates } : customer
+    ));
+  };
+
+  const getCustomerById = (customerId: string) => {
+    return customers.find(customer => customer.id === customerId);
+  };
+
+  const searchCustomers = (query: string) => {
+    const lowerQuery = query.toLowerCase();
+    return customers.filter(customer => 
+      customer.name.toLowerCase().includes(lowerQuery) ||
+      customer.phone?.includes(query) ||
+      customer.email?.toLowerCase().includes(lowerQuery)
+    );
   };
 
   // Menu management functions
@@ -567,18 +803,32 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     <RestaurantContext.Provider value={{
       restaurant,
       tables,
+      tableGroups,
       orders,
+      customers,
       menuItems,
       menuCategories,
       updateTableStatus,
       getAvailableTables,
+      createTableGroup,
+      updateTableGroup,
+      deleteTableGroup,
+      getGroupsByTable,
+      getActiveGroupsByTable,
       createOrder,
       updateOrder,
       addItemToOrder,
       removeItemFromOrder,
+      updateOrderItemStatus,
+      sendKOT,
       getOrderById,
+      getOrdersByGroup,
       getOrdersByTable,
       calculateOrderTotals,
+      createCustomer,
+      updateCustomer,
+      getCustomerById,
+      searchCustomers,
       createCategory,
       updateCategory,
       deleteCategory,

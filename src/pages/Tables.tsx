@@ -3,15 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRestaurant } from "@/contexts/RestaurantContext";
-import { Users, Clock, DollarSign, Plus, QrCode, Receipt } from "lucide-react";
+import { Users, Clock, DollarSign, Plus, QrCode, Receipt, UserPlus } from "lucide-react";
 import { useState } from "react";
 import QRCodeDisplay from "@/components/table/QRCodeDisplay";
 import OrderManagement from "@/components/billing/OrderManagement";
+import TableGroupManager from "@/components/table/TableGroupManager";
 
 const Tables = () => {
-  const { restaurant, tables, orders, updateTableStatus, getOrdersByTable } = useRestaurant();
+  const { restaurant, tables, tableGroups, orders, updateTableStatus, getActiveGroupsByTable, getOrdersByGroup } = useRestaurant();
   const [showQRCode, setShowQRCode] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [selectedTableForGroup, setSelectedTableForGroup] = useState<string | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -35,13 +37,15 @@ const Tables = () => {
 
   const sections = [...new Set(tables.map(table => table.section))];
 
-  const getTableOrders = (tableId: string) => {
-    return getOrdersByTable(tableId);
-  };
-
-  const getActiveOrder = (tableId: string) => {
-    const tableOrders = getTableOrders(tableId);
-    return tableOrders.find(order => order.status !== 'paid');
+  const getGroupStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-blue-500';
+      case 'ordering': return 'bg-yellow-500';
+      case 'dining': return 'bg-green-500';
+      case 'billing': return 'bg-orange-500';
+      case 'paid': return 'bg-gray-500';
+      default: return 'bg-gray-400';
+    }
   };
 
   return (
@@ -51,7 +55,7 @@ const Tables = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Table Management</h1>
           <p className="text-muted-foreground">
-            Monitor and manage table status, QR codes, and orders
+            Monitor and manage tables, groups, QR codes, and orders
           </p>
         </div>
         <Button className="mt-4 sm:mt-0">
@@ -109,9 +113,9 @@ const Tables = () => {
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
               <div>
-                <p className="text-sm font-medium">Active Orders</p>
+                <p className="text-sm font-medium">Active Groups</p>
                 <p className="text-2xl font-bold">
-                  {orders.filter(o => o.status !== 'paid').length}
+                  {tableGroups.filter(g => g.status !== 'paid').length}
                 </p>
               </div>
             </div>
@@ -127,8 +131,7 @@ const Tables = () => {
             {tables
               .filter(table => table.section === section)
               .map((table) => {
-                const activeOrder = getActiveOrder(table.id);
-                const tableOrders = getTableOrders(table.id);
+                const activeGroups = getActiveGroupsByTable(table.id);
                 
                 return (
                   <Card key={table.id} className="hover:shadow-md transition-shadow">
@@ -137,20 +140,18 @@ const Tables = () => {
                         <CardTitle className="text-lg">Table {table.number}</CardTitle>
                         <div className={`w-3 h-3 rounded-full ${getStatusColor(table.status)}`}></div>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{table.capacity} seats</span>
+                        </div>
+                        <Badge variant={getStatusVariant(table.status)} className="capitalize">
+                          {table.status}
+                        </Badge>
+                      </div>
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="space-y-4">
-                        {/* Table Info */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{table.capacity} seats</span>
-                          </div>
-                          <Badge variant={getStatusVariant(table.status)} className="capitalize">
-                            {table.status}
-                          </Badge>
-                        </div>
-
                         {/* QR Code */}
                         <div className="bg-muted/50 rounded-lg p-3">
                           <div className="flex items-center justify-between">
@@ -166,34 +167,50 @@ const Tables = () => {
                           </div>
                         </div>
 
-                        {/* Active Order Info */}
-                        {activeOrder && (
-                          <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                        {/* Active Groups */}
+                        {activeGroups.length > 0 && (
+                          <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Active Order: {activeOrder.id}</span>
-                              <Badge variant="outline" className="capitalize">
-                                {activeOrder.status}
-                              </Badge>
+                              <span className="text-sm font-medium">Groups ({activeGroups.length})</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedTableForGroup(table.id)}
+                              >
+                                <UserPlus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
-                                {Math.floor((Date.now() - activeOrder.createdAt.getTime()) / 60000)} min ago
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm font-semibold">
-                                Total: ${activeOrder.total.toFixed(2)}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {activeOrder.items.length} items
-                              </div>
-                            </div>
-                            {activeOrder.type === 'group' && (
-                              <div className="text-xs text-blue-600">
-                                Group Order ({activeOrder.groupMembers?.length || 0} members)
-                              </div>
-                            )}
+                            {activeGroups.map((group) => {
+                              const groupOrders = getOrdersByGroup(group.id);
+                              const totalAmount = groupOrders.reduce((sum, order) => sum + order.total, 0);
+                              
+                              return (
+                                <div key={group.id} className="p-2 bg-muted/30 rounded border">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-medium">{group.name}</span>
+                                    <div className={`w-2 h-2 rounded-full ${getGroupStatusColor(group.status)}`}></div>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {group.customerName}
+                                  </div>
+                                  {groupOrders.length > 0 && (
+                                    <div className="flex items-center justify-between mt-2">
+                                      <span className="text-xs">
+                                        {groupOrders.reduce((sum, order) => sum + order.items.length, 0)} items
+                                      </span>
+                                      <span className="text-xs font-medium">
+                                        ${totalAmount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3 inline mr-1" />
+                                    {Math.floor((Date.now() - group.createdAt.getTime()) / 60000)} min ago
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -204,9 +221,10 @@ const Tables = () => {
                               <Button 
                                 size="sm" 
                                 className="w-full"
-                                onClick={() => updateTableStatus(table.id, 'occupied')}
+                                onClick={() => setSelectedTableForGroup(table.id)}
                               >
-                                Seat Customers
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Create Group
                               </Button>
                               <div className="grid grid-cols-2 gap-2">
                                 <Button 
@@ -229,16 +247,14 @@ const Tables = () => {
 
                           {table.status === 'occupied' && (
                             <>
-                              {activeOrder && (
-                                <Button 
-                                  size="sm" 
-                                  className="w-full"
-                                  onClick={() => setSelectedOrder(activeOrder.id)}
-                                >
-                                  <Receipt className="h-4 w-4 mr-2" />
-                                  View Bill
-                                </Button>
-                              )}
+                              <Button 
+                                size="sm" 
+                                className="w-full"
+                                onClick={() => setSelectedTableForGroup(table.id)}
+                              >
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Add Group
+                              </Button>
                               <div className="grid grid-cols-2 gap-2">
                                 <Button 
                                   size="sm" 
@@ -248,7 +264,7 @@ const Tables = () => {
                                   Clear Table
                                 </Button>
                                 <Button size="sm" variant="outline">
-                                  Take Payment
+                                  View Bills
                                 </Button>
                               </div>
                             </>
@@ -259,7 +275,7 @@ const Tables = () => {
                               <Button 
                                 size="sm" 
                                 className="w-full"
-                                onClick={() => updateTableStatus(table.id, 'occupied')}
+                                onClick={() => setSelectedTableForGroup(table.id)}
                               >
                                 Seat Reserved Party
                               </Button>
@@ -282,15 +298,6 @@ const Tables = () => {
                             >
                               Mark Clean
                             </Button>
-                          )}
-
-                          {/* Order History */}
-                          {tableOrders.length > 0 && (
-                            <div className="pt-2 border-t">
-                              <div className="text-xs text-muted-foreground">
-                                {tableOrders.length} order(s) today
-                              </div>
-                            </div>
                           )}
                         </div>
                       </div>
@@ -331,6 +338,14 @@ const Tables = () => {
         <OrderManagement 
           orderId={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+        />
+      )}
+
+      {/* Table Group Manager Modal */}
+      {selectedTableForGroup && (
+        <TableGroupManager 
+          tableId={selectedTableForGroup}
+          onClose={() => setSelectedTableForGroup(null)}
         />
       )}
     </div>

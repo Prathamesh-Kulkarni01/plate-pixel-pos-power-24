@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
     removeItemFromOrder,
     menuItems,
     restaurant,
-    categories
+    menuCategories
   } = useRestaurant();
   
   const isMobile = useIsMobile();
@@ -60,7 +59,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
   }
 
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    const category = menuCategories?.find(cat => cat.id === categoryId);
     return category?.name || 'Unknown';
   };
 
@@ -72,8 +71,8 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
     return menuItem.basePrice || 0;
   };
 
-  const categoryNames = ["all", ...categories.map(cat => cat.name)];
-  const filteredMenuItems = menuItems.filter(item => {
+  const categoryNames = ["all", ...(menuCategories?.map(cat => cat.name) || [])];
+  const filteredMenuItems = (menuItems || []).filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || getCategoryName(item.categoryId) === selectedCategory;
     return item.isAvailable && matchesSearch && matchesCategory;

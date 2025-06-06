@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +26,7 @@ const CustomerOrder = () => {
     createOrder, 
     calculateOrderTotals,
     orders,
-    categories 
+    menuCategories 
   } = useRestaurant();
   
   const [orderType, setOrderType] = useState<'individual' | 'group'>('individual');
@@ -61,7 +60,7 @@ const CustomerOrder = () => {
   }
 
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    const category = menuCategories?.find(cat => cat.id === categoryId);
     return category?.name || 'Unknown';
   };
 
@@ -73,10 +72,10 @@ const CustomerOrder = () => {
     return menuItem.basePrice || 0;
   };
 
-  const categoryNames = ['all', ...categories.map(cat => cat.name)];
+  const categoryNames = ['all', ...(menuCategories?.map(cat => cat.name) || [])];
   const filteredItems = selectedCategory === 'all' 
-    ? menuItems.filter(item => item.isAvailable)
-    : menuItems.filter(item => getCategoryName(item.categoryId) === selectedCategory && item.isAvailable);
+    ? (menuItems || []).filter(item => item.isAvailable)
+    : (menuItems || []).filter(item => getCategoryName(item.categoryId) === selectedCategory && item.isAvailable);
 
   const addToCart = (menuItem: any) => {
     const itemPrice = getMenuItemPrice(menuItem);

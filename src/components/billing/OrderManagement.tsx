@@ -91,7 +91,8 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
       menuItemId: menuItem.id,
       menuItem,
       quantity: 1,
-      price: itemPrice
+      price: itemPrice,
+      status: 'pending'
     });
   };
 
@@ -163,7 +164,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">Order {order.id}</h2>
             <p className="text-sm text-muted-foreground">
-              Table {order.tableNumber} • {order.type === 'group' ? 'Group' : 'Individual'}
+              Table {order.tableNumber} • {order.type === 'group' || order.type === 'individual' ? order.type.charAt(0).toUpperCase() + order.type.slice(1) : 'Individual'}
             </p>
           </div>
           <div className="flex items-center gap-2 ml-2">
@@ -408,7 +409,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
             <div>
               <h2 className="text-2xl font-bold">Order {order.id}</h2>
               <p className="text-muted-foreground">
-                Table {order.tableNumber} • {order.type === 'group' ? 'Group Order' : 'Individual Order'}
+                Table {order.tableNumber} • {order.type === 'group' || order.type === 'individual' ? order.type.charAt(0).toUpperCase() + order.type.slice(1) + ' Order' : 'Individual Order'}
               </p>
             </div>
             <div className="flex items-center gap-2">

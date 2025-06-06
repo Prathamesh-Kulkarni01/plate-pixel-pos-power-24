@@ -71,25 +71,26 @@ export interface Order {
   id: string;
   tableId: string;
   tableNumber: string;
-  groupId: string;
-  group?: TableGroup;
+  groupId?: string; // Optional for individual orders
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid';
-  type: 'dine-in' | 'takeaway';
+  type: 'individual' | 'group' | 'dine-in' | 'takeaway';
   items: OrderItem[];
+  customerName?: string; // Add this for individual orders
+  customerPhone?: string; // Add this for individual orders
+  groupMembers?: GroupMember[]; // Add this for group orders
   subtotal: number;
   tax: number;
   serviceCharge: number;
   discount: number;
   discountType: 'percentage' | 'flat';
-  discountReason?: string;
   total: number;
-  notes?: string;
   createdAt: Date;
   updatedAt: Date;
   kotSent: boolean;
   kotSentAt?: Date;
   waiterId?: string;
   waiterName?: string;
+  notes?: string;
 }
 
 export interface MenuCategory {
@@ -604,20 +605,28 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const createOrder = (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const orderId = `ord_${Date.now()}`;
-    const totals = calculateOrderTotals(orderData.items, orderData.discount, orderData.discountType);
-    
     const newOrder: Order = {
       ...orderData,
-      id: orderId,
-      ...totals,
-      kotSent: false,
+      id: `ord_${Date.now()}`,
+      groupId: orderData.groupId || undefined,
+      discount: orderData.discount || 0,
+      discountType: orderData.discountType || 'flat',
+      kotSent: orderData.kotSent || false,
       createdAt: new Date(),
       updatedAt: new Date()
     };
-
-    setOrders(prev => [...prev, newOrder]);
-    return orderId;
+    
+    const totals = calculateOrderTotals(newOrder.items);
+    const finalOrder = { ...newOrder, ...totals };
+    
+    setOrders(prev => [...prev, finalOrder]);
+    
+    // Update table status to occupied if it's available
+    if (orderData.tableId) {
+      updateTableStatus(orderData.tableId, 'occupied');
+    }
+    
+    return finalOrder.id;
   };
 
   const updateOrder = (orderId: string, updates: Partial<Order>) => {
@@ -629,19 +638,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const addItemToOrder = (orderId: string, item: Omit<OrderItem, 'id'>) => {
-    const itemId = `oi_${Date.now()}`;
-    const newItem: OrderItem = { ...item, id: itemId };
-
     setOrders(prev => prev.map(order => {
       if (order.id === orderId) {
-        const newItems = [...order.items, newItem];
-        const totals = calculateOrderTotals(newItems, order.discount, order.discountType);
-        return {
-          ...order,
-          items: newItems,
-          ...totals,
+        const newItem = { ...item, id: `oi_${Date.now()}`, status: 'pending' as const };
+        const updatedOrder = { 
+          ...order, 
+          items: [...order.items, newItem],
           updatedAt: new Date()
         };
+        return { ...updatedOrder, ...calculateOrderTotals(updatedOrder.items) };
       }
       return order;
     }));

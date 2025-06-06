@@ -186,8 +186,9 @@ const CustomerOrder = () => {
     const orderData = {
       tableId: table.id,
       tableNumber: table.number,
+      groupId: undefined, // Will be set by context if needed
       status: 'pending' as const,
-      type: orderType,
+      type: orderType as 'individual' | 'group',
       items: allItems,
       customerName: customerName || 'Anonymous',
       customerPhone,
@@ -200,7 +201,10 @@ const CustomerOrder = () => {
       subtotal: 0,
       tax: 0,
       serviceCharge: 0,
-      total: 0
+      discount: 0,
+      discountType: 'flat' as const,
+      total: 0,
+      kotSent: false
     };
 
     createOrder(orderData);

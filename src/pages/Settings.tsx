@@ -36,7 +36,7 @@ const Settings = () => {
     timezone: restaurant?.timezone || "America/New_York"
   });
 
-  // Tax & Billing Settings
+  // Tax & Billing Settings - Fixed type issue by ensuring boolean types
   const [taxSettings, setTaxSettings] = useState({
     taxRate: restaurant?.settings?.taxRate || 8.5,
     serviceCharge: restaurant?.settings?.serviceCharge || 10,

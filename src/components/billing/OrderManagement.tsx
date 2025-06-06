@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useRestaurant } from "@/contexts/RestaurantContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Plus, 
   Minus, 
@@ -17,7 +17,9 @@ import {
   Save,
   X,
   Search,
-  ShoppingCart
+  ShoppingCart,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 
 interface OrderManagementProps {
@@ -35,12 +37,21 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
     restaurant
   } = useRestaurant();
   
+  const isMobile = useIsMobile();
   const order = getOrderById(orderId);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState(order);
   const [showAddItems, setShowAddItems] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  
+  // Mobile-specific states
+  const [expandedSections, setExpandedSections] = useState({
+    status: true,
+    customer: false,
+    items: true,
+    summary: false
+  });
 
   if (!order || !restaurant) {
     return null;
@@ -91,6 +102,283 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
 
   const statusOptions = ['pending', 'confirmed', 'preparing', 'ready', 'served', 'paid'];
 
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const CollapsibleCard = ({ 
+    title, 
+    section, 
+    children 
+  }: { 
+    title: string; 
+    section: keyof typeof expandedSections; 
+    children: React.ReactNode;
+  }) => (
+    <Card>
+      <CardHeader 
+        className={`cursor-pointer ${isMobile ? 'p-4' : 'p-6'}`}
+        onClick={() => isMobile && toggleSection(section)}
+      >
+        <CardTitle className="flex items-center justify-between text-lg">
+          {title}
+          {isMobile && (
+            expandedSections[section] ? 
+            <ChevronUp className="h-4 w-4" /> : 
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </CardTitle>
+      </CardHeader>
+      {(!isMobile || expandedSections[section]) && (
+        <CardContent className={isMobile ? 'p-4 pt-0' : 'p-6 pt-0'}>
+          {children}
+        </CardContent>
+      )}
+    </Card>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 bg-background z-50 overflow-hidden flex flex-col">
+        {/* Mobile Header */}
+        <div className="sticky top-0 bg-background border-b p-4 flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold truncate">Order {order.id}</h2>
+            <p className="text-sm text-muted-foreground">
+              Table {order.tableNumber} • {order.type === 'group' ? 'Group' : 'Individual'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 ml-2">
+            <Button 
+              size="sm"
+              variant={showAddItems ? "default" : "outline"} 
+              onClick={() => setShowAddItems(!showAddItems)}
+            >
+              <ShoppingCart className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {showAddItems ? (
+          /* Mobile Menu View */
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="p-4 border-b bg-background">
+              <h3 className="font-semibold mb-3">Add Menu Items</h3>
+              
+              {/* Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search menu items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+
+              {/* Category Filter - Scrollable */}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {categories.map(category => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className="whitespace-nowrap capitalize flex-shrink-0"
+                  >
+                    {category === 'all' ? 'All' : category}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 space-y-3">
+              {filteredMenuItems.map(menuItem => (
+                <div key={menuItem.id} className="p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 mr-3">
+                      <h4 className="font-medium text-sm">{menuItem.name}</h4>
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{menuItem.description}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">${menuItem.price.toFixed(2)}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {menuItem.preparationTime}m
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={() => handleAddItem(menuItem)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {filteredMenuItems.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No menu items found
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Mobile Order Details View */
+          <div className="flex-1 overflow-auto p-4 space-y-4">
+            {/* Order Status */}
+            <CollapsibleCard title="Order Status" section="status">
+              <div className="flex gap-2 flex-wrap">
+                {statusOptions.map(status => (
+                  <Button
+                    key={status}
+                    variant={order.status === status ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleStatusChange(status)}
+                    className="capitalize text-xs"
+                  >
+                    {status}
+                  </Button>
+                ))}
+              </div>
+            </CollapsibleCard>
+
+            {/* Customer Information */}
+            <CollapsibleCard title="Customer Info" section="customer">
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="customerName" className="text-sm">Name</Label>
+                    <Input
+                      id="customerName"
+                      value={editedOrder?.customerName || ''}
+                      onChange={(e) => setEditedOrder(prev => prev ? { ...prev, customerName: e.target.value } : prev)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customerPhone" className="text-sm">Phone</Label>
+                    <Input
+                      id="customerPhone"
+                      value={editedOrder?.customerPhone || ''}
+                      onChange={(e) => setEditedOrder(prev => prev ? { ...prev, customerPhone: e.target.value } : prev)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveChanges}>
+                      <Save className="h-3 w-3 mr-1" />
+                      Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Name</Label>
+                      <p className="font-medium text-sm">{order.customerName || 'Anonymous'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Phone</Label>
+                      <p className="font-medium text-sm">{order.customerPhone || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                </div>
+              )}
+            </CollapsibleCard>
+
+            {/* Order Items */}
+            <CollapsibleCard title={`Order Items (${order.items.length})`} section="items">
+              <div className="space-y-3">
+                {order.items.map(item => (
+                  <div key={item.id} className="p-3 border rounded-lg bg-muted/20">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{item.menuItem.name}</div>
+                        <div className="text-xs text-muted-foreground mb-2 line-clamp-2">{item.menuItem.description}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {item.menuItem.preparationTime}m
+                          </Badge>
+                          <span className="text-sm font-medium">
+                            ${item.price.toFixed(2)} × {item.quantity}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 ml-2">
+                        <div className="text-sm font-bold">${(item.price * item.quantity).toFixed(2)}</div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRemoveItem(item.id)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {order.items.length === 0 && (
+                  <div className="text-center text-muted-foreground py-6 text-sm">
+                    No items in this order yet
+                  </div>
+                )}
+              </div>
+            </CollapsibleCard>
+
+            {/* Order Summary */}
+            <CollapsibleCard title="Order Summary" section="summary">
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>${order.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Tax ({restaurant.settings.taxRate}%):</span>
+                    <span>${order.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Service ({restaurant.settings.serviceCharge}%):</span>
+                    <span>${order.serviceCharge.toFixed(2)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span>${order.total.toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button className="w-full" disabled={order.status === 'paid'}>
+                    Mark as Paid
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    Print Bill
+                  </Button>
+                </div>
+              </div>
+            </CollapsibleCard>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop view (existing code)
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-background rounded-lg w-full max-w-7xl max-h-[95vh] overflow-hidden flex">

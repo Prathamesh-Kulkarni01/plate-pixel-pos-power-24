@@ -12,6 +12,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { useLocation, Link } from "react-router-dom";
 import { 
   BarChart3, 
@@ -21,41 +22,43 @@ import {
   Calendar,
   CreditCard,
   FileText,
-  Clock
+  Clock,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const menuItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: BarChart3,
-    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier']
+    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier', 'manager']
   },
   {
     title: "Orders",
     url: "/orders",
     icon: FileText,
-    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier']
+    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier', 'manager']
   },
   {
     title: "Menu",
     url: "/menu",
     icon: ChefHat,
-    roles: ['admin', 'owner']
+    roles: ['admin', 'owner', 'manager']
   },
   {
     title: "Tables",
     url: "/tables",
     icon: Calendar,
-    roles: ['admin', 'owner', 'waiter']
+    roles: ['admin', 'owner', 'waiter', 'manager']
   },
   {
     title: "Kitchen",
     url: "/kitchen",
     icon: Clock,
-    roles: ['admin', 'owner', 'kitchen']
+    roles: ['admin', 'owner', 'kitchen', 'manager']
   },
   {
     title: "Waiter",
@@ -67,24 +70,25 @@ const menuItems = [
     title: "Billing",
     url: "/billing",
     icon: CreditCard,
-    roles: ['admin', 'owner', 'cashier']
+    roles: ['admin', 'owner', 'cashier', 'manager']
   },
   {
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
-    roles: ['admin', 'owner']
+    roles: ['admin', 'owner', 'manager']
   },
   {
     title: "Settings",
     url: "/settings",
     icon: Settings,
-    roles: ['admin', 'owner']
+    roles: ['admin', 'owner', 'manager']
   }
 ];
 
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const { organization, currentOutlet } = useOrganization();
   const location = useLocation();
 
   const userMenuItems = menuItems.filter(item => 
@@ -98,9 +102,26 @@ export function Sidebar() {
           <ChefHat className="h-8 w-8 text-orange-600" />
           <div>
             <h2 className="text-lg font-semibold">RestaurantOS</h2>
-            <p className="text-sm text-muted-foreground">Management Suite</p>
+            <p className="text-sm text-muted-foreground">SaaS Edition</p>
           </div>
         </div>
+        
+        {organization && (
+          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{organization.name}</span>
+              <Badge variant="outline" className="text-xs">
+                {organization.plan}
+              </Badge>
+            </div>
+            {currentOutlet && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Active: {currentOutlet.name}
+              </p>
+            )}
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>

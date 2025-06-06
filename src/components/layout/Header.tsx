@@ -2,7 +2,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useRestaurant } from "@/contexts/RestaurantContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { Bell, Sun, Moon, Monitor } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,10 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OutletSwitcher } from "./OutletSwitcher";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
-  const { restaurant } = useRestaurant();
+  const { currentOutlet } = useOrganization();
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -22,9 +23,14 @@ export function Header() {
         <SidebarTrigger className="-ml-1" />
         
         <div className="flex-1 flex items-center justify-between ml-4">
-          <div>
-            <h1 className="text-xl font-semibold">{restaurant?.name}</h1>
-            <p className="text-sm text-muted-foreground">Restaurant Management</p>
+          <div className="flex items-center space-x-4">
+            <OutletSwitcher />
+            <div>
+              <h1 className="text-xl font-semibold">{currentOutlet?.name}</h1>
+              <p className="text-sm text-muted-foreground">
+                {currentOutlet?.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Management
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

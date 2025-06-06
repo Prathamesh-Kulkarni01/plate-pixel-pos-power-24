@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,8 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
     addItemToOrder, 
     removeItemFromOrder,
     menuItems,
-    restaurant
+    restaurant,
+    categories
   } = useRestaurant();
   
   const isMobile = useIsMobile();
@@ -57,10 +59,23 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
     return null;
   }
 
-  const categories = ["all", ...new Set(menuItems.map(item => item.category))];
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.name || 'Unknown';
+  };
+
+  const getMenuItemPrice = (menuItem: any) => {
+    // If the item has variants, get the price from the first variant or base price
+    if (menuItem.variants && menuItem.variants.length > 0) {
+      return menuItem.variants[0].price || menuItem.basePrice || 0;
+    }
+    return menuItem.basePrice || 0;
+  };
+
+  const categoryNames = ["all", ...categories.map(cat => cat.name)];
   const filteredMenuItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || getCategoryName(item.categoryId) === selectedCategory;
     return item.isAvailable && matchesSearch && matchesCategory;
   });
 
@@ -72,11 +87,12 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
   };
 
   const handleAddItem = (menuItem: any) => {
+    const itemPrice = getMenuItemPrice(menuItem);
     addItemToOrder(orderId, {
       menuItemId: menuItem.id,
       menuItem,
       quantity: 1,
-      price: menuItem.price
+      price: itemPrice
     });
   };
 
@@ -184,7 +200,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
 
               {/* Category Filter - Scrollable */}
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {categories.map(category => (
+                {categoryNames.map(category => (
                   <Button
                     key={category}
                     variant={selectedCategory === category ? 'default' : 'outline'}
@@ -199,25 +215,29 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
             </div>
 
             <div className="flex-1 overflow-auto p-4 space-y-3">
-              {filteredMenuItems.map(menuItem => (
-                <div key={menuItem.id} className="p-3 bg-muted/30 rounded-lg border">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 mr-3">
-                      <h4 className="font-medium text-sm">{menuItem.name}</h4>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{menuItem.description}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">${menuItem.price.toFixed(2)}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {menuItem.preparationTime}m
-                        </Badge>
+              {filteredMenuItems.map(menuItem => {
+                const itemPrice = getMenuItemPrice(menuItem);
+                return (
+                  <div key={menuItem.id} className="p-3 bg-muted/30 rounded-lg border">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 mr-3">
+                        <h4 className="font-medium text-sm">{menuItem.name}</h4>
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{menuItem.description}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">${itemPrice.toFixed(2)}</span>
+                          <Badge variant="outline" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {menuItem.preparationTime}m
+                          </Badge>
+                        </div>
                       </div>
+                      <Button size="sm" onClick={() => handleAddItem(menuItem)}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button size="sm" onClick={() => handleAddItem(menuItem)}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {filteredMenuItems.length === 0 && (
                 <div className="text-center text-muted-foreground py-8">
@@ -313,12 +333,12 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
                             {item.menuItem.preparationTime}m
                           </Badge>
                           <span className="text-sm font-medium">
-                            ${item.price.toFixed(2)} × {item.quantity}
+                            ${(item.price || 0).toFixed(2)} × {item.quantity}
                           </span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 ml-2">
-                        <div className="text-sm font-bold">${(item.price * item.quantity).toFixed(2)}</div>
+                        <div className="text-sm font-bold">${((item.price || 0) * item.quantity).toFixed(2)}</div>
                         <Button
                           size="sm"
                           variant="destructive"
@@ -345,20 +365,20 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>${(order.subtotal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Tax ({restaurant.settings.taxRate}%):</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>Tax ({restaurant.settings?.taxRate || 0}%):</span>
+                    <span>${(order.tax || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Service ({restaurant.settings.serviceCharge}%):</span>
-                    <span>${order.serviceCharge.toFixed(2)}</span>
+                    <span>Service ({restaurant.settings?.serviceCharge || 0}%):</span>
+                    <span>${(order.serviceCharge || 0).toFixed(2)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold">
                     <span>Total:</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>${(order.total || 0).toFixed(2)}</span>
                   </div>
                 </div>
                 
@@ -504,12 +524,12 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
                           {item.menuItem.preparationTime}m
                         </Badge>
                         <span className="text-sm font-medium">
-                          ${item.price.toFixed(2)} × {item.quantity}
+                          ${(item.price || 0).toFixed(2)} × {item.quantity}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xl font-bold">${(item.price * item.quantity).toFixed(2)}</div>
+                      <div className="text-xl font-bold">${((item.price || 0) * item.quantity).toFixed(2)}</div>
                       <Button
                         size="sm"
                         variant="destructive"
@@ -541,20 +561,20 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
                 <div className="space-y-2 text-lg">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>${(order.subtotal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tax ({restaurant.settings.taxRate}%):</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>Tax ({restaurant.settings?.taxRate || 0}%):</span>
+                    <span>${(order.tax || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Service Charge ({restaurant.settings.serviceCharge}%):</span>
-                    <span>${order.serviceCharge.toFixed(2)}</span>
+                    <span>Service Charge ({restaurant.settings?.serviceCharge || 0}%):</span>
+                    <span>${(order.serviceCharge || 0).toFixed(2)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-xl">
                     <span>Total:</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>${(order.total || 0).toFixed(2)}</span>
                   </div>
                 </div>
                 
@@ -590,7 +610,7 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
 
               {/* Category Filter */}
               <div className="flex gap-2 overflow-x-auto">
-                {categories.map(category => (
+                {categoryNames.map(category => (
                   <Button
                     key={category}
                     variant={selectedCategory === category ? 'default' : 'outline'}
@@ -605,25 +625,29 @@ const OrderManagement = ({ orderId, onClose }: OrderManagementProps) => {
             </div>
 
             <div className="flex-1 overflow-auto p-4 space-y-3">
-              {filteredMenuItems.map(menuItem => (
-                <div key={menuItem.id} className="p-3 bg-background rounded-lg border hover:shadow-sm transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 mr-3">
-                      <h4 className="font-medium">{menuItem.name}</h4>
-                      <p className="text-sm text-muted-foreground mb-2">{menuItem.description}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">${menuItem.price.toFixed(2)}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {menuItem.preparationTime}m
-                        </Badge>
+              {filteredMenuItems.map(menuItem => {
+                const itemPrice = getMenuItemPrice(menuItem);
+                return (
+                  <div key={menuItem.id} className="p-3 bg-background rounded-lg border hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 mr-3">
+                        <h4 className="font-medium">{menuItem.name}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{menuItem.description}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg">${itemPrice.toFixed(2)}</span>
+                          <Badge variant="outline" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {menuItem.preparationTime}m
+                          </Badge>
+                        </div>
                       </div>
+                      <Button size="sm" onClick={() => handleAddItem(menuItem)}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button size="sm" onClick={() => handleAddItem(menuItem)}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {filteredMenuItems.length === 0 && (
                 <div className="text-center text-muted-foreground py-8">

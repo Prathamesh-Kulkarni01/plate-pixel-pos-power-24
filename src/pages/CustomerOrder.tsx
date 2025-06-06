@@ -26,7 +26,8 @@ const CustomerOrder = () => {
     menuItems, 
     createOrder, 
     calculateOrderTotals,
-    orders 
+    orders,
+    categories 
   } = useRestaurant();
   
   const [orderType, setOrderType] = useState<'individual' | 'group'>('individual');
@@ -59,12 +60,27 @@ const CustomerOrder = () => {
     );
   }
 
-  const categories = ['all', ...new Set(menuItems.map(item => item.category))];
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.name || 'Unknown';
+  };
+
+  const getMenuItemPrice = (menuItem: any) => {
+    // If the item has variants, get the price from the first variant or base price
+    if (menuItem.variants && menuItem.variants.length > 0) {
+      return menuItem.variants[0].price || menuItem.basePrice || 0;
+    }
+    return menuItem.basePrice || 0;
+  };
+
+  const categoryNames = ['all', ...categories.map(cat => cat.name)];
   const filteredItems = selectedCategory === 'all' 
     ? menuItems.filter(item => item.isAvailable)
-    : menuItems.filter(item => item.category === selectedCategory && item.isAvailable);
+    : menuItems.filter(item => getCategoryName(item.categoryId) === selectedCategory && item.isAvailable);
 
   const addToCart = (menuItem: any) => {
+    const itemPrice = getMenuItemPrice(menuItem);
+    
     if (orderType === 'individual') {
       const existingItem = cart.find(item => item.menuItemId === menuItem.id);
       if (existingItem) {
@@ -78,7 +94,7 @@ const CustomerOrder = () => {
           menuItemId: menuItem.id,
           menuItem,
           quantity: 1,
-          price: menuItem.price
+          price: itemPrice
         }]);
       }
     } else {
@@ -94,7 +110,7 @@ const CustomerOrder = () => {
           menuItemId: menuItem.id,
           menuItem,
           quantity: 1,
-          price: menuItem.price
+          price: itemPrice
         });
       }
       
@@ -150,7 +166,7 @@ const CustomerOrder = () => {
         id: `gm_${index}`,
         name: member.name || `Person ${index + 1}`,
         items: member.items,
-        subtotal: member.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+        subtotal: member.items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0)
       })) : undefined,
       subtotal: 0,
       tax: 0,
@@ -280,7 +296,7 @@ const CustomerOrder = () => {
           <CardContent>
             {/* Category Filter */}
             <div className="flex gap-2 mb-4 overflow-x-auto">
-              {categories.map(category => (
+              {categoryNames.map(category => (
                 <Button
                   key={category}
                   variant={selectedCategory === category ? 'default' : 'outline'}
@@ -295,24 +311,27 @@ const CustomerOrder = () => {
 
             {/* Menu Items */}
             <div className="space-y-4">
-              {filteredItems.map(item => (
-                <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="font-bold">${item.price.toFixed(2)}</span>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {item.preparationTime}m
-                      </Badge>
+              {filteredItems.map(item => {
+                const itemPrice = getMenuItemPrice(item);
+                return (
+                  <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="font-bold">${itemPrice.toFixed(2)}</span>
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {item.preparationTime}m
+                        </Badge>
+                      </div>
                     </div>
+                    <Button size="sm" onClick={() => addToCart(item)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button size="sm" onClick={() => addToCart(item)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -335,12 +354,12 @@ const CustomerOrder = () => {
                   <div className="flex-1">
                     <div className="font-medium">{item.menuItem.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      ${item.price.toFixed(2)} x {item.quantity}
+                      ${(item.price || 0).toFixed(2)} x {item.quantity}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${((item.price || 0) * item.quantity).toFixed(2)}
                     </span>
                     <Button
                       size="sm"
@@ -368,19 +387,19 @@ const CustomerOrder = () => {
             <CardContent className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${totals.subtotal.toFixed(2)}</span>
+                <span>${(totals.subtotal || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Tax ({restaurant.settings.taxRate}%):</span>
-                <span>${totals.tax.toFixed(2)}</span>
+                <span>Tax ({restaurant.settings?.taxRate || 0}%):</span>
+                <span>${(totals.tax || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Service Charge ({restaurant.settings.serviceCharge}%):</span>
-                <span>${totals.serviceCharge.toFixed(2)}</span>
+                <span>Service Charge ({restaurant.settings?.serviceCharge || 0}%):</span>
+                <span>${(totals.serviceCharge || 0).toFixed(2)}</span>
               </div>
               <div className="border-t pt-2 flex justify-between font-bold text-lg">
                 <span>Total:</span>
-                <span>${totals.total.toFixed(2)}</span>
+                <span>${(totals.total || 0).toFixed(2)}</span>
               </div>
               
               <Button 

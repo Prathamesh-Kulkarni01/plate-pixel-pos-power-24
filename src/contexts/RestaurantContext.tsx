@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface Restaurant {
@@ -26,17 +25,6 @@ export interface Table {
   currentOrderId?: string;
   section: string;
   qrCode: string;
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  image?: string;
-  isAvailable: boolean;
-  preparationTime: number;
 }
 
 export interface OrderItem {
@@ -74,11 +62,81 @@ export interface Order {
   updatedAt: Date;
 }
 
+export interface MenuCategory {
+  id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  isActive: boolean;
+  sortOrder: number;
+  parentCategoryId?: string; // For subcategories
+}
+
+export interface MenuVariant {
+  id: string;
+  name: string;
+  price: number;
+  isDefault: boolean;
+}
+
+export interface MenuItemAddon {
+  id: string;
+  name: string;
+  price: number;
+  isRequired: boolean;
+  maxSelections?: number;
+}
+
+export interface MenuItemModifier {
+  id: string;
+  name: string;
+  options: MenuVariant[];
+  isRequired: boolean;
+  allowMultiple: boolean;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  categoryId: string;
+  image?: string;
+  isAvailable: boolean;
+  isVegetarian: boolean;
+  isVegan: boolean;
+  isSpicy: boolean;
+  allergens: string[];
+  preparationTime: number;
+  calories?: number;
+  rating: number;
+  reviewCount: number;
+  variants?: MenuVariant[];
+  modifiers?: MenuItemModifier[];
+  addons?: MenuItemAddon[];
+  taxRate?: number; // Override restaurant default tax rate
+  discountPercentage?: number;
+  tags: string[];
+  nutritionalInfo?: {
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+  };
+  portionSize?: string;
+  servingTemperature?: 'hot' | 'cold' | 'room';
+  isSignature: boolean;
+  isNew: boolean;
+  isPopular: boolean;
+  sortOrder: number;
+}
+
 interface RestaurantContextType {
   restaurant: Restaurant | null;
   tables: Table[];
   orders: Order[];
   menuItems: MenuItem[];
+  menuCategories: MenuCategory[];
   updateTableStatus: (tableId: string, status: Table['status']) => void;
   getAvailableTables: () => Table[];
   createOrder: (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => string;
@@ -88,6 +146,15 @@ interface RestaurantContextType {
   getOrderById: (orderId: string) => Order | undefined;
   getOrdersByTable: (tableId: string) => Order[];
   calculateOrderTotals: (items: OrderItem[]) => { subtotal: number; tax: number; serviceCharge: number; total: number };
+  // Menu management functions
+  createCategory: (category: Omit<MenuCategory, 'id'>) => string;
+  updateCategory: (categoryId: string, updates: Partial<MenuCategory>) => void;
+  deleteCategory: (categoryId: string) => void;
+  createMenuItem: (item: Omit<MenuItem, 'id'>) => string;
+  updateMenuItem: (itemId: string, updates: Partial<MenuItem>) => void;
+  deleteMenuItem: (itemId: string) => void;
+  getCategoriesByParent: (parentId?: string) => MenuCategory[];
+  getMenuItemsByCategory: (categoryId: string) => MenuItem[];
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
@@ -118,42 +185,189 @@ const mockTables: Table[] = [
   { id: 't6', number: '6', capacity: 8, status: 'cleaning', section: 'Private', qrCode: 'QR_T6_BELLA_VISTA' },
 ];
 
+const mockMenuCategories: MenuCategory[] = [
+  {
+    id: 'cat_1',
+    name: 'Appetizers',
+    description: 'Start your meal with our delicious appetizers',
+    isActive: true,
+    sortOrder: 1
+  },
+  {
+    id: 'cat_2',
+    name: 'Pizza',
+    description: 'Handcrafted pizzas with fresh ingredients',
+    isActive: true,
+    sortOrder: 2
+  },
+  {
+    id: 'cat_3',
+    name: 'Main Courses',
+    description: 'Hearty main dishes to satisfy your appetite',
+    isActive: true,
+    sortOrder: 3
+  },
+  {
+    id: 'cat_4',
+    name: 'Pasta',
+    description: 'Traditional and modern pasta dishes',
+    isActive: true,
+    sortOrder: 4,
+    parentCategoryId: 'cat_3'
+  },
+  {
+    id: 'cat_5',
+    name: 'Grilled',
+    description: 'Fresh grilled meats and seafood',
+    isActive: true,
+    sortOrder: 5,
+    parentCategoryId: 'cat_3'
+  },
+  {
+    id: 'cat_6',
+    name: 'Salads',
+    description: 'Fresh and healthy salad options',
+    isActive: true,
+    sortOrder: 6
+  },
+  {
+    id: 'cat_7',
+    name: 'Desserts',
+    description: 'Sweet endings to your meal',
+    isActive: true,
+    sortOrder: 7
+  }
+];
+
 const mockMenuItems: MenuItem[] = [
   {
     id: 'm1',
     name: 'Margherita Pizza',
     description: 'Fresh mozzarella, tomato sauce, and basil',
-    price: 18.99,
-    category: 'pizza',
+    basePrice: 18.99,
+    categoryId: 'cat_2',
     isAvailable: true,
-    preparationTime: 15
+    isVegetarian: true,
+    isVegan: false,
+    isSpicy: false,
+    allergens: ['gluten', 'dairy'],
+    preparationTime: 15,
+    calories: 280,
+    rating: 4.8,
+    reviewCount: 234,
+    variants: [
+      { id: 'v1', name: 'Regular', price: 0, isDefault: true },
+      { id: 'v2', name: 'Large', price: 4.00, isDefault: false },
+      { id: 'v3', name: 'Extra Large', price: 8.00, isDefault: false }
+    ],
+    modifiers: [
+      {
+        id: 'mod1',
+        name: 'Crust Type',
+        options: [
+          { id: 'crust1', name: 'Thin Crust', price: 0, isDefault: true },
+          { id: 'crust2', name: 'Thick Crust', price: 2.00, isDefault: false }
+        ],
+        isRequired: true,
+        allowMultiple: false
+      }
+    ],
+    addons: [
+      { id: 'addon1', name: 'Extra Cheese', price: 2.50, isRequired: false },
+      { id: 'addon2', name: 'Mushrooms', price: 1.50, isRequired: false },
+      { id: 'addon3', name: 'Pepperoni', price: 3.00, isRequired: false }
+    ],
+    tags: ['popular', 'vegetarian'],
+    isSignature: false,
+    isNew: false,
+    isPopular: true,
+    sortOrder: 1
   },
   {
     id: 'm2',
     name: 'Caesar Salad',
     description: 'Crisp romaine lettuce, parmesan cheese, croutons',
-    price: 12.50,
-    category: 'salads',
+    basePrice: 12.50,
+    categoryId: 'cat_6',
     isAvailable: true,
-    preparationTime: 8
+    isVegetarian: true,
+    isVegan: false,
+    isSpicy: false,
+    allergens: ['dairy', 'eggs'],
+    preparationTime: 8,
+    calories: 320,
+    rating: 4.6,
+    reviewCount: 156,
+    variants: [
+      { id: 'v4', name: 'Regular', price: 0, isDefault: true },
+      { id: 'v5', name: 'With Grilled Chicken', price: 6.00, isDefault: false },
+      { id: 'v6', name: 'With Grilled Shrimp', price: 8.00, isDefault: false }
+    ],
+    tags: ['healthy', 'vegetarian'],
+    isSignature: false,
+    isNew: false,
+    isPopular: false,
+    sortOrder: 1
   },
   {
     id: 'm3',
     name: 'Ribeye Steak',
     description: '12oz premium ribeye steak grilled to perfection',
-    price: 32.99,
-    category: 'mains',
+    basePrice: 32.99,
+    categoryId: 'cat_5',
     isAvailable: true,
-    preparationTime: 25
+    isVegetarian: false,
+    isVegan: false,
+    isSpicy: false,
+    allergens: [],
+    preparationTime: 25,
+    calories: 650,
+    rating: 4.9,
+    reviewCount: 189,
+    modifiers: [
+      {
+        id: 'mod2',
+        name: 'Cooking Level',
+        options: [
+          { id: 'cook1', name: 'Rare', price: 0, isDefault: false },
+          { id: 'cook2', name: 'Medium Rare', price: 0, isDefault: true },
+          { id: 'cook3', name: 'Medium', price: 0, isDefault: false },
+          { id: 'cook4', name: 'Well Done', price: 0, isDefault: false }
+        ],
+        isRequired: true,
+        allowMultiple: false
+      }
+    ],
+    tags: ['signature', 'premium'],
+    isSignature: true,
+    isNew: false,
+    isPopular: true,
+    sortOrder: 1
   },
   {
     id: 'm4',
     name: 'Chocolate Lava Cake',
     description: 'Warm chocolate cake with molten center',
-    price: 8.99,
-    category: 'desserts',
+    basePrice: 8.99,
+    categoryId: 'cat_7',
     isAvailable: true,
-    preparationTime: 10
+    isVegetarian: true,
+    isVegan: false,
+    isSpicy: false,
+    allergens: ['dairy', 'eggs', 'gluten'],
+    preparationTime: 10,
+    calories: 480,
+    rating: 4.9,
+    reviewCount: 267,
+    addons: [
+      { id: 'addon4', name: 'Vanilla Ice Cream', price: 2.00, isRequired: false },
+      { id: 'addon5', name: 'Fresh Berries', price: 3.00, isRequired: false }
+    ],
+    tags: ['dessert', 'popular'],
+    isSignature: false,
+    isNew: false,
+    isPopular: true,
+    sortOrder: 1
   }
 ];
 
@@ -195,7 +409,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [restaurant] = useState<Restaurant>(mockRestaurant);
   const [tables, setTables] = useState<Table[]>(mockTables);
   const [orders, setOrders] = useState<Order[]>(mockOrders);
-  const [menuItems] = useState<MenuItem[]>(mockMenuItems);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(mockMenuItems);
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(mockMenuCategories);
 
   const updateTableStatus = (tableId: string, status: Table['status']) => {
     setTables(prev => prev.map(table => 
@@ -291,12 +506,70 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return orders.filter(order => order.tableId === tableId);
   };
 
+  // Menu management functions
+  const createCategory = (categoryData: Omit<MenuCategory, 'id'>) => {
+    const categoryId = `cat_${Date.now()}`;
+    const newCategory: MenuCategory = {
+      ...categoryData,
+      id: categoryId
+    };
+    setMenuCategories(prev => [...prev, newCategory]);
+    return categoryId;
+  };
+
+  const updateCategory = (categoryId: string, updates: Partial<MenuCategory>) => {
+    setMenuCategories(prev => prev.map(category => 
+      category.id === categoryId ? { ...category, ...updates } : category
+    ));
+  };
+
+  const deleteCategory = (categoryId: string) => {
+    setMenuCategories(prev => prev.filter(category => category.id !== categoryId));
+    // Also remove menu items in this category
+    setMenuItems(prev => prev.filter(item => item.categoryId !== categoryId));
+  };
+
+  const createMenuItem = (itemData: Omit<MenuItem, 'id'>) => {
+    const itemId = `m_${Date.now()}`;
+    const newItem: MenuItem = {
+      ...itemData,
+      id: itemId,
+      rating: 0,
+      reviewCount: 0
+    };
+    setMenuItems(prev => [...prev, newItem]);
+    return itemId;
+  };
+
+  const updateMenuItem = (itemId: string, updates: Partial<MenuItem>) => {
+    setMenuItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+  };
+
+  const deleteMenuItem = (itemId: string) => {
+    setMenuItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const getCategoriesByParent = (parentId?: string) => {
+    return menuCategories
+      .filter(category => category.parentCategoryId === parentId && category.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  };
+
+  const getMenuItemsByCategory = (categoryId: string) => {
+    return menuItems
+      .filter(item => item.categoryId === categoryId && item.isAvailable)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  };
+
   return (
     <RestaurantContext.Provider value={{
       restaurant,
       tables,
       orders,
       menuItems,
+      menuCategories,
       updateTableStatus,
       getAvailableTables,
       createOrder,
@@ -305,7 +578,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       removeItemFromOrder,
       getOrderById,
       getOrdersByTable,
-      calculateOrderTotals
+      calculateOrderTotals,
+      createCategory,
+      updateCategory,
+      deleteCategory,
+      createMenuItem,
+      updateMenuItem,
+      deleteMenuItem,
+      getCategoriesByParent,
+      getMenuItemsByCategory
     }}>
       {children}
     </RestaurantContext.Provider>

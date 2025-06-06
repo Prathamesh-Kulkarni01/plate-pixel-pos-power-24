@@ -110,16 +110,38 @@ const MenuItemManager: React.FC<MenuItemManagerProps> = ({ selectedCategoryId })
   // Group items by category for display
   const getGroupedItems = () => {
     const itemsToShow = getItemsToDisplay();
-    const grouped: { [categoryId: string]: MenuItem[] } = {};
-
-    itemsToShow.forEach(item => {
-      if (!grouped[item.categoryId]) {
-        grouped[item.categoryId] = [];
+    
+    if (selectedCategoryId) {
+      // If a main category is selected, group by subcategories
+      const subcategories = getCategoriesByParent(selectedCategoryId);
+      const grouped: { [categoryId: string]: MenuItem[] } = {};
+      
+      // Add main category items
+      const mainCategoryItems = itemsToShow.filter(item => item.categoryId === selectedCategoryId);
+      if (mainCategoryItems.length > 0) {
+        grouped[selectedCategoryId] = mainCategoryItems;
       }
-      grouped[item.categoryId].push(item);
-    });
-
-    return grouped;
+      
+      // Add subcategory items
+      subcategories.forEach(subcategory => {
+        const subcategoryItems = itemsToShow.filter(item => item.categoryId === subcategory.id);
+        if (subcategoryItems.length > 0) {
+          grouped[subcategory.id] = subcategoryItems;
+        }
+      });
+      
+      return grouped;
+    } else {
+      // If no category selected, group by all categories
+      const grouped: { [categoryId: string]: MenuItem[] } = {};
+      itemsToShow.forEach(item => {
+        if (!grouped[item.categoryId]) {
+          grouped[item.categoryId] = [];
+        }
+        grouped[item.categoryId].push(item);
+      });
+      return grouped;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -242,9 +264,18 @@ const MenuItemManager: React.FC<MenuItemManagerProps> = ({ selectedCategoryId })
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Menu Item Management</h2>
-          <p className="text-muted-foreground">Manage your restaurant's menu items</p>
+          <h2 className="text-2xl font-bold">
+            {selectedCategoryId ? `${getCategoryName(selectedCategoryId)} Items` : 'All Menu Items'}
+          </h2>
+          <p className="text-muted-foreground">
+            {selectedCategoryId 
+              ? `Manage items in ${getCategoryName(selectedCategoryId)} category and its subcategories`
+              : 'Manage all menu items across categories'
+            }
+          </p>
         </div>
+        
+        {/* Add Menu Item Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>

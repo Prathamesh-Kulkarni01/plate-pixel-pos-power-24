@@ -1,0 +1,152 @@
+
+import {
+  Sidebar as SidebarComponent,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation, Link } from "react-router-dom";
+import { 
+  BarChart3, 
+  ChefHat, 
+  Users, 
+  Settings, 
+  Calendar,
+  CreditCard,
+  FileText,
+  Clock
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+const menuItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: BarChart3,
+    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier']
+  },
+  {
+    title: "Orders",
+    url: "/orders",
+    icon: FileText,
+    roles: ['admin', 'owner', 'waiter', 'kitchen', 'cashier']
+  },
+  {
+    title: "Menu",
+    url: "/menu",
+    icon: ChefHat,
+    roles: ['admin', 'owner']
+  },
+  {
+    title: "Tables",
+    url: "/tables",
+    icon: Calendar,
+    roles: ['admin', 'owner', 'waiter']
+  },
+  {
+    title: "Kitchen",
+    url: "/kitchen",
+    icon: Clock,
+    roles: ['admin', 'owner', 'kitchen']
+  },
+  {
+    title: "Waiter",
+    url: "/waiter",
+    icon: Users,
+    roles: ['waiter']
+  },
+  {
+    title: "Billing",
+    url: "/billing",
+    icon: CreditCard,
+    roles: ['admin', 'owner', 'cashier']
+  },
+  {
+    title: "Reports",
+    url: "/reports",
+    icon: BarChart3,
+    roles: ['admin', 'owner']
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    roles: ['admin', 'owner']
+  }
+];
+
+export function Sidebar() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+
+  const userMenuItems = menuItems.filter(item => 
+    user?.role && item.roles.includes(user.role)
+  );
+
+  return (
+    <SidebarComponent className="border-r">
+      <SidebarHeader className="p-4">
+        <div className="flex items-center space-x-3">
+          <ChefHat className="h-8 w-8 text-orange-600" />
+          <div>
+            <h2 className="text-lg font-semibold">RestaurantOS</h2>
+            <p className="text-sm text-muted-foreground">Management Suite</p>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {userMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === item.url}
+                  >
+                    <Link to={item.url} className="flex items-center space-x-3">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="p-4">
+        <div className="flex items-center space-x-3 mb-3">
+          <Avatar>
+            <AvatarFallback>
+              {user?.name.split(' ').map(n => n[0]).join('')}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{user?.name}</p>
+            <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+          </div>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={logout}
+          className="w-full"
+        >
+          Logout
+        </Button>
+      </SidebarFooter>
+    </SidebarComponent>
+  );
+}
